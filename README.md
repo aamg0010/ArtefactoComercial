@@ -15,7 +15,7 @@ npm run prisma:seed
 npm run dev
 ```
 
-Abre `http://localhost:3000`. Usuarios seed: `admin@try.company` y `comercial@try.company`; contraseña de desarrollo: `TryComercial2025!`. Cámbiala antes de cualquier despliegue. El seed es idempotente y carga exactamente las 56 empresas y los 5 guiones de `data/`; no crea empresas ficticias.
+Abre `http://localhost:3000`. Usuarios seed: `admin@try.company` y `comercial@try.company`. Define `SEED_ADMIN_PASSWORD` y `SEED_SALES_PASSWORD` antes de ejecutar el seed. El seed es idempotente y carga exactamente las 56 empresas y los 5 guiones de `data/`; no crea empresas ficticias.
 
 Para activar Google, define `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. No se necesita ninguna API externa para la Fase 1.
 

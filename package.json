@@ -11,8 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "prisma:generate": "prisma generate --schema prisma/schema.runtime.prisma",
-    "prisma:migrate": "prisma migrate dev --schema prisma/schema.runtime.prisma",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "import:sheet": "tsx scripts/import-sheet.ts"
   },
