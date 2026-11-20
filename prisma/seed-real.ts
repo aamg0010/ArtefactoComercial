@@ -1,0 +1,30 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { PrismaClient, ContactSource, ConsentStatus, Country, LegalBasis, UserRole } from '@prisma/client';
+import { hash } from 'bcryptjs';
+import { normalizeText } from '../src/lib/normalization';
+
+type Prospect = { id: string; empresa: string; prioridad: string; estado: string; pais: string; provincia: string; municipio: string; sector: string; lineas_try: string[]; angulo_entrada: string; contacto: { texto: string; emails: string[]; telefonos: string[]; verificado: boolean; tipo: string; base_legal: string }; proxima_accion: string; fecha_proxima_accion: string | null; fuente: string };
+type ScriptData = { prospecto_id: string; [key: string]: unknown };
+const prisma = new PrismaClient();
+const products = [['Ganadex', 'Plataforma SaaS de gestión digital agro-ganadera'], ['trygestión', 'ERP de gestión empresarial general'], ['Athenea', 'ERP de trazabilidad integral'], ['Soporte técnico', 'Soporte in situ y remoto'], ['Ciberseguridad', 'Diagnóstico, protección y formación'], ['Sistemas de gestión', 'Procesos, ISO y digitalización'], ['Bots / IA', 'Chatbots, automatizaciones y agentes']] as const;
+function stage(value: string) { return ({ 'Por investigar': 'DETECTED', 'Por contactar': 'RESEARCHED', Contactado: 'CONTACTING', 'Reunión agendada': 'MEETING', 'Propuesta enviada': 'PROPOSAL', Ganado: 'WON', Descartado: 'LOST' } as Record<string, string>)[value] ?? 'DETECTED'; }
+function productLine(value: string) { if (value.startsWith('Bots')) return 'Bots / IA'; if (value.startsWith('Soporte')) return 'Soporte técnico'; return value; }
+async function main() {
+  const prospects = JSON.parse(await readFile(join(process.cwd(), 'data/prospectos.json'), 'utf8')) as Prospect[];
+  const scriptFile = JSON.parse(await readFile(join(process.cwd(), 'data/guiones.json'), 'utf8')) as { guiones: ScriptData[] };
+  if (prospects.length !== 56 || scriptFile.guiones.length !== 5) throw new Error(`Datos inválidos: ${prospects.length} prospectos y ${scriptFile.guiones.length} guiones.`);
+  const passwordHash = await hash('TryComercial2025!', 12);
+  const admin = await prisma.user.upsert({ where: { email: 'admin@try.company' }, update: {}, create: { email: 'admin@try.company', name: 'Administración try!', role: UserRole.ADMIN, passwordHash } });
+  await prisma.user.upsert({ where: { email: 'comercial@try.company' }, update: {}, create: { email: 'comercial@try.company', name: 'Comercial Demo', role: UserRole.SALES, passwordHash } });
+  for (const [line, description] of products) await prisma.product.upsert({ where: { line }, update: { name: line, description }, create: { name: line, line, description } });
+  for (const row of prospects) {
+    const company = await prisma.company.upsert({ where: { sourceId: row.id }, update: { name: row.empresa, priority: row.prioridad, pipelineStage: stage(row.estado), sector: row.sector, city: row.municipio, region: row.provincia, sourceDetail: 'data/prospectos.json' }, create: { sourceId: row.id, name: row.empresa, normalizedName: normalizeText(row.empresa), country: row.pais === 'Colombia' ? Country.CO : Country.ES, priority: row.prioridad, pipelineStage: stage(row.estado), sector: row.sector, city: row.municipio, region: row.provincia, source: ContactSource.MANUAL, sourceDetail: 'data/prospectos.json', ownerId: admin.id } });
+    await prisma.researchReport.upsert({ where: { id: `research-${row.id}` }, update: { summary: row.angulo_entrada, sourceUrl: row.fuente }, create: { id: `research-${row.id}`, companyId: company.id, summary: row.angulo_entrada, sourceUrl: row.fuente, data: { nextAction: row.proxima_accion, nextActionDate: row.fecha_proxima_accion } } });
+    if (row.contacto.texto !== 'Pendiente') await prisma.contact.upsert({ where: { id: `contact-${row.id}` }, update: { fullName: row.contacto.texto }, create: { id: `contact-${row.id}`, companyId: company.id, fullName: row.contacto.texto, email: row.contacto.emails[0] ?? null, phone: row.contacto.telefonos[0] ?? null, source: ContactSource.MANUAL, sourceDetail: row.contacto.base_legal, legalBasis: LegalBasis.LEGITIMATE_INTEREST, consentStatus: ConsentStatus.NOT_REQUIRED, requiresConsent: false } });
+    for (const rawLine of row.lineas_try) { const line = productLine(rawLine); const product = await prisma.product.findUnique({ where: { line } }); if (product) await prisma.opportunity.upsert({ where: { companyId_productId: { companyId: company.id, productId: product.id } }, update: {}, create: { companyId: company.id, productId: product.id } }); }
+  }
+  for (const script of scriptFile.guiones) { const company = await prisma.company.findUniqueOrThrow({ where: { sourceId: script.prospecto_id } }); await prisma.script.upsert({ where: { companyId_version: { companyId: company.id, version: 1 } }, update: { content: script as object }, create: { companyId: company.id, version: 1, author: 'seed', content: script as object } }); }
+  console.log('Seed real completado: 56 empresas y 5 guiones.');
+}
+main().finally(() => prisma.$disconnect());

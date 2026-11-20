@@ -1,7 +1,49 @@
-# ArtefactoComercial
-Repositorio-app comercial para contacto inicial de try! company
+# try! Comercial — Fase 1
 
-- `SPEC.md`: especificación completa de la app (stack, módulos, cumplimiento legal, fases, verificación y, en la sección 7, cómo cargar los datos).
-- `PROMPT_CODEX.md`: los mensajes para pegar en Codex.
-- `data/prospectos.json` y `data/prospectos.csv`: 56 empresas detectadas el 20/11/2026 en el Bajo Aragón, el resto de Teruel y Zaragoza (5 A, 31 B, 20 C).
-- `data/guiones.json` y `data/guiones/*.md`: estudio previo, guion de llamada, mensaje de voz, emails y cadencia de las 5 empresas A.
+Base de la aplicación interna de gestión comercial de try! company. Esta fase incluye autenticación, modelo de datos, catálogo inicial, CRUD de empresas/contactos e importación CSV deduplicada.
+
+## Requisitos e instalación
+
+- Node.js 20+ y PostgreSQL 15+.
+- Copia `.env.example` a `.env` y configura `DATABASE_URL` y `AUTH_SECRET`.
+
+```bash
+npm install
+npm run prisma:generate
+npm run prisma:migrate -- --name init
+npm run prisma:seed
+npm run dev
+```
+
+Abre `http://localhost:3000`. Usuarios seed: `admin@try.company` y `comercial@try.company`; contraseña de desarrollo: `TryComercial2025!`. Cámbiala antes de cualquier despliegue. El seed es idempotente y carga exactamente las 56 empresas y los 5 guiones de `data/`; no crea empresas ficticias.
+
+Para activar Google, define `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. No se necesita ninguna API externa para la Fase 1.
+
+## CSV
+
+Formato UTF-8 con cabeceras: `nombre,pais,nifNit,web,email,telefono,region,ciudad,sector,contacto,cargo,emailContacto`. `pais` admite `ES` o `CO`. Hay un ejemplo descargable desde la propia aplicación.
+
+La importación valida con Zod y evita duplicados por NIF/NIT, dominio web o nombre normalizado + país. Los contactos importados llevan origen, base legal pendiente y, si incluyen email personal, consentimiento pendiente. No hay envío de emails en esta fase.
+
+La hoja de seguimiento se puede reimportar de forma idempotente (por `id`, o por nombre normalizado y país) con:
+
+```bash
+npm run import:sheet -- ruta/a/exportacion.csv
+```
+
+## Calidad y comandos
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run test:e2e
+```
+
+No hay cron aplicable todavía: el rastreo diario se incorpora en la Fase 4. Por ello tampoco hay tareas, cadencias, lista de exclusión ni envíos que verificar en esta fase.
+
+## Decisiones y pendientes
+
+- Auth.js con credenciales locales de desarrollo y Google opcional; PostgreSQL + Prisma como almacenamiento principal.
+- Los datos de `data/prospectos.json` son la fuente de verdad. El seed preserva sus datos sin completarlos ni corregirlos y guarda los cinco guiones como versión 1, autor `seed`.
+- Pendientes: proveedor PostgreSQL desplegado, OAuth Google, adaptadores de fuentes, cron/cola, IA, email/calendario y controles completos de RGPD/habeas data de la Fase 6.
