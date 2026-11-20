@@ -7,9 +7,11 @@ import { PrismaClient } from '@prisma/client';
 import { afterAll, describe, expect, it } from 'vitest';
 
 const run = promisify(execFile);
-const enabled = Boolean(process.env.DATABASE_URL);
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+if (testDatabaseUrl) process.env.DATABASE_URL = testDatabaseUrl;
+const enabled = Boolean(testDatabaseUrl);
 const prisma = new PrismaClient();
-const env = { ...process.env, SEED_ADMIN_PASSWORD: 'integration-admin', SEED_SALES_PASSWORD: 'integration-sales' };
+const env = { ...process.env, DATABASE_URL: testDatabaseUrl, SEED_ADMIN_PASSWORD: 'integration-admin', SEED_SALES_PASSWORD: 'integration-sales' };
 const tsx = join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
 
 describe.runIf(enabled)('seed e importación de hoja', () => {

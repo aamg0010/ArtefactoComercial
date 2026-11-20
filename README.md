@@ -40,6 +40,8 @@ npm test
 npm run test:e2e
 ```
 
+Las pruebas de integración solo se ejecutan cuando se define `TEST_DATABASE_URL`; nunca usan `DATABASE_URL`. Debe apuntar a una base PostgreSQL desechable.
+
 No hay cron aplicable todavía: el rastreo diario se incorpora en la Fase 4. Por ello tampoco hay tareas, cadencias, lista de exclusión ni envíos que verificar en esta fase.
 
 ## Decisiones y pendientes
