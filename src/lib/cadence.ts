@@ -1,11 +1,7 @@
-import { CompanyCadenceStatus, PrismaClient } from '@prisma/client';
+import { CompanyCadenceStatus, Prisma } from '@prisma/client';
 
-export async function setCompanyCadenceStatus(prisma: PrismaClient, companyCadenceId: string, status: CompanyCadenceStatus) {
-  return prisma.$transaction(async (tx) => {
-    const cadence = await tx.companyCadence.update({ where: { id: companyCadenceId }, data: { status } });
-    if (status === 'PAUSED' || status === 'FINISHED') {
-      await tx.task.updateMany({ where: { companyCadenceId, status: 'PENDING', dueAt: { gt: new Date() } }, data: { status: 'CANCELLED' } });
-    }
-    return cadence;
-  });
+export async function setCompanyCadenceStatus(tx: Prisma.TransactionClient, companyCadenceId: string, status: CompanyCadenceStatus, exceptTaskId?: string) {
+  const cadence = await tx.companyCadence.update({ where: { id: companyCadenceId }, data: { status } });
+  if (status === 'PAUSED' || status === 'FINISHED') await tx.task.updateMany({ where: { companyCadenceId, status: 'PENDING', ...(exceptTaskId ? { id: { not: exceptTaskId } } : {}) }, data: { status: 'CANCELLED' } });
+  return cadence;
 }
