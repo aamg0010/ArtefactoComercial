@@ -239,7 +239,7 @@ model Task {
   title String
   scriptId String?
   status TaskStatus @default(PENDING)
-  dueAt DateTime
+  dueAt DateTime?
   completedAt DateTime?
   result String?
   createdAt DateTime @default(now())
