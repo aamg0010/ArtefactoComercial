@@ -32,4 +32,11 @@ describe.runIf(enabled)('seed e importación de hoja', () => {
     await run(process.execPath, [tsx, 'prisma/seed-real.ts'], { env });
     await expect(prisma.company.findUniqueOrThrow({ where: { sourceId: 'la-calandina-s-coop' } })).resolves.toMatchObject({ pipelineStage: 'MEETING', nextAction: 'Trabajo comercial' });
   }, 30_000);
+  it('elimina tareas al borrar empresa y bloquea tareas suprimidas', async () => {
+    const company = await prisma.company.findUniqueOrThrow({ where: { sourceId: 'la-calandina-s-coop' } });
+    const task = await prisma.task.create({ data: { companyId: company.id, type: 'CALL', title: 'Prueba', dueAt: new Date() } });
+    await prisma.company.delete({ where: { id: company.id } });
+    await expect(prisma.task.findUnique({ where: { id: task.id } })).resolves.toBeNull();
+    await prisma.suppressionList.upsert({ where: { email: 'blocked@example.test' }, update: { companyId: null }, create: { email: 'blocked@example.test', reason: 'Prueba' } });
+  });
 });

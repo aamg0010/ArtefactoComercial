@@ -52,6 +52,11 @@ enum ActivityType {
   NOTE
   MEETING
 }
+enum CompanyCadenceStatus {
+  ACTIVE
+  PAUSED
+  FINISHED
+}
 model User {
   id String @id @default(cuid())
   name String?
@@ -62,6 +67,8 @@ model User {
   sessions Session[]
   assignedCompanies Company[] @relation("CompanyOwner")
   auditLogs AuditLog[]
+  tasks Task[] @relation("TaskAssignee")
+  activities Activity[] @relation("ActivityAuthor")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -123,6 +130,10 @@ model Company {
   researchReports ResearchReport[]
   opportunities Opportunity[]
   scripts Script[]
+  tasks Task[]
+  activities Activity[]
+  cadences CompanyCadence[]
+  suppressions SuppressionList[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([normalizedName, country])
@@ -182,6 +193,8 @@ model Script {
   author String
   content Json
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tasks Task[]
+  companyCadences CompanyCadence[]
   createdAt DateTime @default(now())
   @@unique([companyId, version])
 }
@@ -202,6 +215,8 @@ model Cadence {
   name String @unique
   active Boolean @default(true)
   createdAt DateTime @default(now())
+  steps CadenceStep[]
+  companyCadences CompanyCadence[]
 }
 model CadenceStep {
   id String @id @default(cuid())
@@ -210,31 +225,65 @@ model CadenceStep {
   type TaskType
   action String
   createdAt DateTime @default(now())
+  cadence Cadence @relation(fields: [cadenceId], references: [id], onDelete: Cascade)
+  tasks Task[]
   @@unique([cadenceId, dayOffset, type])
 }
 model Task {
   id String @id @default(cuid())
   companyId String
+  companyCadenceId String?
   cadenceStepId String?
   assigneeId String?
   type TaskType
+  title String
+  scriptId String?
   status TaskStatus @default(PENDING)
   dueAt DateTime
+  completedAt DateTime?
+  result String?
   createdAt DateTime @default(now())
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyCadence CompanyCadence? @relation(fields: [companyCadenceId], references: [id], onDelete: Cascade)
+  cadenceStep CadenceStep? @relation(fields: [cadenceStepId], references: [id])
+  assignee User? @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  script Script? @relation(fields: [scriptId], references: [id])
+  activities Activity[]
   @@index([companyId, dueAt, status])
 }
 model Activity {
   id String @id @default(cuid())
   companyId String
+  taskId String?
+  authorId String?
   type ActivityType
   result String?
   body String?
   createdAt DateTime @default(now())
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  author User? @relation("ActivityAuthor", fields: [authorId], references: [id])
+}
+model CompanyCadence {
+  id String @id @default(cuid())
+  companyId String
+  cadenceId String
+  scriptId String?
+  startDate DateTime
+  status CompanyCadenceStatus @default(ACTIVE)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cadence Cadence @relation(fields: [cadenceId], references: [id], onDelete: Cascade)
+  script Script? @relation(fields: [scriptId], references: [id])
+  tasks Task[]
+  @@unique([companyId, cadenceId])
 }
 model SuppressionList {
   id String @id @default(cuid())
   email String? @unique
   phone String? @unique
+  companyId String?
   reason String
   createdAt DateTime @default(now())
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  @@index([companyId])
 }
