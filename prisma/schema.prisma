@@ -35,6 +35,23 @@ enum ConsentStatus {
   GRANTED
   WITHDRAWN
 }
+enum TaskType {
+  CALL
+  EMAIL
+  FOLLOW_UP
+}
+enum TaskStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+  CANCELLED
+}
+enum ActivityType {
+  CALL
+  EMAIL
+  NOTE
+  MEETING
+}
 model User {
   id String @id @default(cuid())
   name String?
@@ -178,4 +195,46 @@ model AuditLog {
   createdAt DateTime @default(now())
   user User? @relation(fields: [userId], references: [id])
   @@index([entityType, entityId])
+}
+
+model Cadence {
+  id String @id @default(cuid())
+  name String @unique
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+}
+model CadenceStep {
+  id String @id @default(cuid())
+  cadenceId String
+  dayOffset Int
+  type TaskType
+  action String
+  createdAt DateTime @default(now())
+  @@unique([cadenceId, dayOffset, type])
+}
+model Task {
+  id String @id @default(cuid())
+  companyId String
+  cadenceStepId String?
+  assigneeId String?
+  type TaskType
+  status TaskStatus @default(PENDING)
+  dueAt DateTime
+  createdAt DateTime @default(now())
+  @@index([companyId, dueAt, status])
+}
+model Activity {
+  id String @id @default(cuid())
+  companyId String
+  type ActivityType
+  result String?
+  body String?
+  createdAt DateTime @default(now())
+}
+model SuppressionList {
+  id String @id @default(cuid())
+  email String? @unique
+  phone String? @unique
+  reason String
+  createdAt DateTime @default(now())
 }

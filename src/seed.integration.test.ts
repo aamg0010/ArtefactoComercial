@@ -27,4 +27,9 @@ describe.runIf(enabled)('seed e importación de hoja', () => {
     await run(process.execPath, [tsx, 'scripts/import-sheet.ts', csv], { env });
     await expect(prisma.company.findUniqueOrThrow({ where: { sourceId: 'la-calandina-s-coop' } })).resolves.toMatchObject({ pipelineStage: 'CONTACTING', nextAction: 'Llamar' });
   }, 30_000);
+  it('conserva el estado comercial al volver a ejecutar el seed', async () => {
+    await prisma.company.update({ where: { sourceId: 'la-calandina-s-coop' }, data: { pipelineStage: 'MEETING', priority: 'A', nextAction: 'Trabajo comercial' } });
+    await run(process.execPath, [tsx, 'prisma/seed-real.ts'], { env });
+    await expect(prisma.company.findUniqueOrThrow({ where: { sourceId: 'la-calandina-s-coop' } })).resolves.toMatchObject({ pipelineStage: 'MEETING', nextAction: 'Trabajo comercial' });
+  }, 30_000);
 });
