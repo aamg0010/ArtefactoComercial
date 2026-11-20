@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { PrismaClient } from '@prisma/client';
+import { setCompanyCadenceStatus } from './lib/cadence';
 import { afterAll, describe, expect, it } from 'vitest';
 
 const run = promisify(execFile);
@@ -44,4 +45,11 @@ describe.runIf(enabled)('seed e importación de hoja', () => {
     await expect(prisma.task.findUnique({ where: { id: task.id } })).resolves.toBeNull();
     await prisma.suppressionList.upsert({ where: { email: 'blocked@example.test' }, update: { companyId: null }, create: { email: 'blocked@example.test', reason: 'Prueba' } });
   });
+  it('pausar una cadencia cancela sus tareas pendientes futuras', async () => {
+    await run(process.execPath, [tsx, 'prisma/seed-real.ts'], { env });
+    const company = await prisma.company.findUniqueOrThrow({ where: { sourceId: 'la-calandina-s-coop' } });
+    const cadence = await prisma.companyCadence.findFirstOrThrow({ where: { companyId: company.id } });
+    await setCompanyCadenceStatus(prisma, cadence.id, 'PAUSED');
+    await expect(prisma.task.count({ where: { companyCadenceId: cadence.id, status: 'PENDING', dueAt: { gt: new Date() } } })).resolves.toBe(0);
+  }, 30_000);
 });
