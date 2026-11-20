@@ -250,6 +250,7 @@ model Task {
   script Script? @relation(fields: [scriptId], references: [id])
   activities Activity[]
   @@index([companyId, dueAt, status])
+  @@unique([companyId, cadenceStepId])
 }
 model Activity {
   id String @id @default(cuid())
