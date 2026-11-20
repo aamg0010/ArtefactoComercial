@@ -1,6 +1,6 @@
 # try! Comercial — Especificación para Codex
 
-> Deja este archivo en la raíz del repositorio como `SPEC.md` (o cópialo dentro de `AGENTS.md`). Al final está el prompt de arranque para pegar en Codex.
+> Este archivo va en la raíz del repositorio junto a la carpeta `data/`, que trae los datos reales de prospección (sección 7). El prompt de arranque para Codex está en `PROMPT_CODEX.md`.
 
 ---
 
@@ -137,8 +137,8 @@ Por empresa y por línea de producto, generar y guardar (editables y versionados
 
 Trabaja en **fases**, con un commit/PR por fase, y no pases a la siguiente sin dejar la anterior funcionando:
 
-1. **Fase 1 — Base:** proyecto, auth, modelo de datos, migraciones, seed con catálogo try! y 20 empresas de ejemplo (ficticias y marcadas como tales), CRUD de empresas/contactos, importación CSV.
-2. **Fase 2 — Tareas y "Mi día":** cadencias, generación de tareas, panel diario con checks, registro de resultados, pipeline kanban.
+1. **Fase 1 — Base:** proyecto, auth, modelo de datos, migraciones, CRUD de empresas/contactos e importación CSV. El seed carga el catálogo try! y **los datos reales de `data/`** (sección 7): 56 empresas y 5 guiones. Nada de empresas ficticias.
+2. **Fase 2 — Tareas y "Mi día":** cadencias, generación de tareas, panel diario con checks, registro de resultados, pipeline kanban. Al terminar esta fase, "Mi día" del lunes 23/11/2026 debe mostrar las tareas de La Calandina y de la Cooperativa Ganadera de Caspe con su guion listo.
 3. **Fase 3 — IA:** investigación, scoring y generador de guiones/plantillas.
 4. **Fase 4 — Rastreo automático:** perfiles de búsqueda, adaptador Google Places, deduplicación, cron diario.
 5. **Fase 5 — Integraciones:** Gmail/Outlook (borradores y envío con aprobación), Google Calendar, resumen diario por email.
@@ -158,16 +158,28 @@ Antes de dar por cerrada cada fase:
 - `npm run lint`, `npm run typecheck` y `npm test` sin errores.
 - Informe final: qué funciona, qué queda como stub, qué credenciales hacen falta para activarlo.
 
+- El seed se puede ejecutar dos veces sin duplicar nada y deja exactamente 56 empresas y 5 guiones.
+
 ---
 
-## Prompt de arranque para pegar en Codex
+## 7. Datos iniciales (`data/`)
 
-```
-Lee SPEC.md completo. Es la especificación de "try! Comercial", la app de gestión
-comercial de try! company. Empieza por la Fase 1 tal como se describe en la sección 5.
-Antes de escribir código, devuélveme en un mensaje corto: (1) el stack que vas a usar
-si difiere del propuesto y por qué, (2) el esquema Prisma propuesto, (3) las dudas que
-bloqueen la fase. Si no hay bloqueos, continúa e implementa la Fase 1 completa,
-con tests, seed y README. Al terminar, ejecuta la checklist de verificación de la
-sección 6 que aplique a la fase y resume el resultado.
-```
+Primera prospección real, hecha el 20/11/2026 en el Bajo Aragón, el resto de Teruel y Zaragoza. **Son la fuente de verdad del seed**: no inventes, completes ni "corrijas" datos de empresas; lo que falta está marcado como `Pendiente`.
+
+| Archivo | Contenido |
+|---|---|
+| `data/prospectos.json` | 56 empresas. Campos: `id` (slug estable, úsalo como clave de idempotencia), `empresa`, `prioridad` (A/B/C), `estado`, `pais`, `provincia`, `comarca`, `municipio`, `sector`, `lineas_try[]`, `angulo_entrada`, `contacto{texto, emails[], telefonos[], verificado, tipo, base_legal}`, `proxima_accion`, `fecha_proxima_accion` (ISO o null), `fuente` (URL), `fecha_deteccion`, `guion_id` (o null) |
+| `data/prospectos.csv` | Lo mismo en CSV (UTF-8 con BOM) para probar la importación CSV |
+| `data/guiones.json` | `cadencia_estandar[]` y `guiones[]` de las 5 empresas A. Cada guion tiene `estudio` (resumen, datos_clave, dolores_probables, preguntas_diagnostico, fuentes), `llamada` (apertura, motivo, pregunta_clave, propuesta_valor, objeciones{clave: respuesta}, cierre, mensaje_voz), `emails[]` ({dia, asunto, cuerpo}) y `cadencia[]` ({dia, canal, accion}) |
+| `data/guiones/*.md` | Los mismos guiones en formato legible |
+
+Cómo mapearlos:
+- `prospectos.json` → `Company` + `Contact` (contacto genérico de empresa, `tipo = corporativo`) + `ResearchReport` (con `angulo_entrada` y `fuente`) + `Opportunity` por cada elemento de `lineas_try`.
+- `estado` → etapa del pipeline: `Por investigar` → Detectada; `Por contactar` → Investigada; `Contactado`, `Reunión agendada`, `Propuesta enviada`, `Ganado`, `Descartado` → sus etapas.
+- `guiones.json` → `Script` versionado (versión 1, autor "seed") ligado a la empresa por `prospecto_id`, y `Cadence` + `CadenceStep` desde `cadencia`. El día 1 de la cadencia es `fecha_proxima_accion` del prospecto.
+- Las tareas de "Mi día" se generan desde las cadencias; las empresas sin guion generan una única tarea con su `proxima_accion` y `fecha_proxima_accion` (si es null, sin fecha, en la bandeja "Por planificar").
+- `[TELÉFONO]` y `[WEB]` en los emails son variables del perfil del usuario, no texto fijo.
+- Todos los emails van en modo borrador: el pie con la opción «BAJA» es obligatorio y una respuesta «BAJA» añade la empresa a `SuppressionList`.
+- Los nombres de interlocutores en `guiones.json` salen de prensa y llevan "confirmar": guárdalos como `Contact` con `verificado = false`.
+
+Importante: la hoja compartida de seguimiento sigue existiendo mientras la app no esté lista. Añade en la Fase 1 un script `npm run import:sheet -- archivo.csv` que reimporte un CSV exportado de esa hoja (mismas columnas que `prospectos.csv`) haciendo *upsert* por `id`, o por nombre normalizado si no hay `id`.

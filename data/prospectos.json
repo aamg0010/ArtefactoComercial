@@ -1,0 +1,1663 @@
+[
+  {
+    "id": "la-calandina-s-coop",
+    "empresa": "La Calandina S. Coop.",
+    "prioridad": "A",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Calanda",
+    "sector": "Cooperativa de fruta (Melocotón de Calanda DOP) y aceite DOP",
+    "lineas_try": [
+      "Athenea",
+      "trygestión",
+      "Ciberseguridad"
+    ],
+    "angulo_entrada": "Premio EROSKI al productor aragonés 2025, venta online propia y unos 850.000 kg de melocotón DO por campaña: trazabilidad DOP del lote al cliente",
+    "contacto": {
+      "texto": "info@lacalandina.com",
+      "emails": [
+        "info@lacalandina.com"
+      ],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Email de presentación + llamada",
+    "fecha_proxima_accion": "2026-11-23",
+    "fuente": "https://corporativo.eroski.es/wp-content/uploads/2025/10/20251010_NP_La-Calandina-Premio-EROSKI-al-productor-aragones.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": "la-calandina"
+  },
+  {
+    "id": "cooperativa-ganadera-de-caspe",
+    "empresa": "Cooperativa Ganadera de Caspe (Red Ganadera Caspe)",
+    "prioridad": "A",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Bajo Aragón-Caspe",
+    "municipio": "Caspe",
+    "sector": "Porcino de capa blanca, fábrica de piensos, servicios veterinarios",
+    "lineas_try": [
+      "Ganadex",
+      "Ciberseguridad",
+      "Bots"
+    ],
+    "angulo_entrada": "Reconocida Entidad Asociativa Prioritaria por el MAPA (2025). Ha contratado perfiles de innovación y medio ambiente (purines, planes de abonado): datos de granja dispersos",
+    "contacto": {
+      "texto": "976 632 132 · ganaderacaspe.com",
+      "emails": [],
+      "telefonos": [
+        "976 632 132"
+      ],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada al área de innovación",
+    "fecha_proxima_accion": "2026-11-23",
+    "fuente": "https://www.interempresas.net/porcino/587842-La-Cooperativa-Ganadera-de-Caspe-es-reconocida-como-Entidad-Asociativa-Prioritaria.html",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": "cooperativa-ganadera-caspe"
+  },
+  {
+    "id": "la-chipranesca-s-c-l",
+    "empresa": "La Chipranesca S.C.L.",
+    "prioridad": "A",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Bajo Aragón-Caspe",
+    "municipio": "Chiprana",
+    "sector": "Cooperativa de fruta (unas 550 ha y 12 M kg/año: albaricoque, melocotón, nectarina, cereza…)",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Mucho volumen y muchas variedades: trazabilidad por parcela, lote y cliente, y control de costes en plena crisis de precios de la fruta",
+    "contacto": {
+      "texto": "976 637 240 · frudecas@lachipranesca.com (dato antiguo, verificar)",
+      "emails": [
+        "frudecas@lachipranesca.com"
+      ],
+      "telefonos": [
+        "976 637 240"
+      ],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada al gerente",
+    "fecha_proxima_accion": "2026-11-24",
+    "fuente": "https://www.lacomarca.net/reportajes/contigo-construimos-futuro/la-chipranesca/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": "la-chipranesca"
+  },
+  {
+    "id": "aceites-impelte",
+    "empresa": "Aceites Impelte",
+    "prioridad": "A",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Martín",
+    "municipio": "La Puebla de Híjar",
+    "sector": "Almazara DOP Aceite del Bajo Aragón",
+    "lineas_try": [
+      "Athenea",
+      "trygestión",
+      "Bots"
+    ],
+    "angulo_entrada": "Almazara propia desde 2011, más de 30 premios, marcas premium y salto a EE. UU.; ventas online que se duplicaron en 2020. En plena campaña (nov.–ene.): llamada corta y visita en febrero",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada corta + email",
+    "fecha_proxima_accion": "2026-11-24",
+    "fuente": "https://www.lacomarca.net/almazara-artal-apadrina-olivo-aceites-impelte-ganadores-mejor-aceite-bajo-aragon-2021/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": "aceites-impelte"
+  },
+  {
+    "id": "jamcal-alimentacion-sa",
+    "empresa": "Jamcal Alimentación SA",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Jiloca",
+    "municipio": "Calamocha",
+    "sector": "Secadero de jamón a servicio (maquila), 26–50 empleados",
+    "lineas_try": [
+      "Ciberseguridad",
+      "Athenea"
+    ],
+    "angulo_entrada": "Ligado a CLC y al grupo Vall Companys: probablemente usa los sistemas del grupo. Entrar por ciberseguridad de planta",
+    "contacto": {
+      "texto": "978 732 402 · jamcalalimentacion.es",
+      "emails": [],
+      "telefonos": [
+        "978 732 402"
+      ],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Diagnóstico de ciberseguridad",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.alimarket.es/buscador_avanzado/frase-jamcal%20alimentaci%C3%B3n/clases-noticias",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "comercial-logistica-de-calamocha",
+    "empresa": "Comercial Logística de Calamocha (CLC)",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Jiloca",
+    "municipio": "Calamocha",
+    "sector": "Jamón curado y loncheado, proveedor de Mercadona",
+    "lineas_try": [
+      "Ciberseguridad",
+      "Soporte"
+    ],
+    "angulo_entrada": "Filial de Duríber (grupo Vall Companys): ERP del grupo casi seguro. Solo ciberseguridad o soporte local",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar interlocutor local",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.alimarket.es/alimentacion/informe/329296/informe-2021-del-sector-de-jamon-curado-blanco-en-espana",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "pastores-grupo-cooperativo",
+    "empresa": "Pastores Grupo Cooperativo",
+    "prioridad": "A",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Zaragoza",
+    "municipio": "Zaragoza (Mercazaragoza)",
+    "sector": "Cooperativa de productores de carne (ovino, Ternasco de Aragón)",
+    "lineas_try": [
+      "Ganadex",
+      "Athenea"
+    ],
+    "angulo_entrada": "Mayor cooperativa de ovino de Aragón: 600 socios, 170 trabajadores, 400 pueblos. Recogida de corderos por todo el territorio y planes técnicos por explotación: encaje directo con Ganadex",
+    "contacto": {
+      "texto": "grupopastores.coop",
+      "emails": [],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Email + llamada",
+    "fecha_proxima_accion": "2026-11-25",
+    "fuente": "https://www.informa.es/directorio-empresas/Localidad_TERUEL.html",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": "pastores-grupo-cooperativo"
+  },
+  {
+    "id": "grupo-arcoiris",
+    "empresa": "Grupo Arcoiris (GUCO S. Coop.)",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Valderrobres",
+    "sector": "Cooperativa de cooperativas: porcino, avícola, cunícola, piensos y cárnicos",
+    "lineas_try": [
+      "Ganadex (granjas integradas)",
+      "Ciberseguridad",
+      "Bots"
+    ],
+    "angulo_entrada": "233 M€ de facturación y nueva fábrica de piensos: casi seguro tiene ERP propio. Entrar por ciberseguridad o por la gestión de las granjas integradas",
+    "contacto": {
+      "texto": "info@grupoarcoiris.com · 978 850 062",
+      "emails": [
+        "info@grupoarcoiris.com"
+      ],
+      "telefonos": [
+        "978 850 062"
+      ],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Email al director general",
+    "fecha_proxima_accion": "2026-11-26",
+    "fuente": "https://www.lacomarca.net/grupo-arcoiris-logra-facturacion-record-230-millones/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "pretersa-prenavisa",
+    "empresa": "Pretersa-Prenavisa",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Martín",
+    "municipio": "La Puebla de Híjar",
+    "sector": "Prefabricados de hormigón (naves industriales y agro)",
+    "lineas_try": [
+      "Ciberseguridad",
+      "Soporte",
+      "Bots"
+    ],
+    "angulo_entrada": "Motor del polígono Venta del Barro, con ingeniería centralizada allí y planta en Andújar: varias sedes conectadas que proteger",
+    "contacto": {
+      "texto": "978 820 640 · pretersa@pretersa.com",
+      "emails": [
+        "pretersa@pretersa.com"
+      ],
+      "telefonos": [
+        "978 820 640"
+      ],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Diagnóstico de ciberseguridad",
+    "fecha_proxima_accion": null,
+    "fuente": "https://construnews.com/archivos/125399/industrial.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "almazara-artal",
+    "empresa": "Almazara Artal",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Martín",
+    "municipio": "Albalate del Arzobispo",
+    "sector": "Almazara DOP Aceite del Bajo Aragón",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Almazara joven que controla todo el proceso (campo, almazara, embotellado) y ya ha ganado un Gran Oro en CINVE 2022",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada a gerencia",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/reportajes/contigo-construimos-futuro/almazara-artal/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "apadrina-un-olivo",
+    "empresa": "Apadrina un Olivo",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Andorra-Sierra de Arcos",
+    "municipio": "Oliete",
+    "sector": "Recuperación de olivos con aceite propio y venta online por apadrinamiento",
+    "lineas_try": [
+      "Bots",
+      "Ciberseguridad",
+      "trygestión"
+    ],
+    "angulo_entrada": "Oro en EVO IOOC 2020. Vende online a particulares: atención al cliente automatizable",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Email con propuesta de bot",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/seis-almazaras-dop-aceite-bajo-aragon-premiadas-italia/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "limabril-s-l",
+    "empresa": "Limabril S.L.",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcañiz",
+    "sector": "Limpieza y servicios auxiliares",
+    "lineas_try": [
+      "trygestión",
+      "Soporte",
+      "Bots"
+    ],
+    "angulo_entrada": "Empresa de servicios con plantilla repartida: partes de trabajo, cuadrantes y facturación",
+    "contacto": {
+      "texto": "limabril.com",
+      "emails": [],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.informa.es/directorio-empresas/O000_ACTIVIDADES-ADMINISTRATIVAS-SERVICIOS-AUXILIARES/Provincia_TERUEL.html",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "suministros-industriales-hierros-alcaniz-s-l",
+    "empresa": "Suministros Industriales Hierros Alcañiz S.L.",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcañiz",
+    "sector": "Distribución de ferretería y suministro industrial",
+    "lineas_try": [
+      "trygestión",
+      "Soporte",
+      "Ciberseguridad"
+    ],
+    "angulo_entrada": "Distribuidor con stock y muchas referencias: inventario, pedidos y tienda",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Visita presencial",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.alimarket.es/buscador_empresas_resultados/area-construccion/donde-ESP_44",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "fruticola-maellana-s-c-l",
+    "empresa": "Frutícola Maellana S.C.L.",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Bajo Aragón-Caspe",
+    "municipio": "Maella",
+    "sector": "Cooperativa de fruta de hueso",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Zona muy golpeada por la caída de precios de la fruta: mensaje de control de costes y trazabilidad para exportar",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.qdq.com/a/casas/zaragoza/fabara",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "cooperativa-agricola-san-lorenzo",
+    "empresa": "Cooperativa Agrícola San Lorenzo",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Bajo Aragón-Caspe",
+    "municipio": "Maella",
+    "sector": "Cooperativa agrícola (fruta)",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Misma zona y mismo problema de precios que Frutícola Maellana: se pueden trabajar juntas",
+    "contacto": {
+      "texto": "976 638 004",
+      "emails": [],
+      "telefonos": [
+        "976 638 004"
+      ],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada",
+    "fecha_proxima_accion": null,
+    "fuente": "https://citarea.cita-aragon.es/bitstream/10532/3843/1/CER0024.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "cooperativa-san-isidro-de-fabara",
+    "empresa": "Cooperativa San Isidro de Fabara",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Bajo Aragón-Caspe",
+    "municipio": "Fabara",
+    "sector": "Cooperativa de fruta, aceituna (500 ha) y almendra, con seleccionadora propia",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Tres cultivos y seleccionadora propia: lotes, aportaciones de socios y liquidaciones",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada",
+    "fecha_proxima_accion": null,
+    "fuente": "https://econz.unizar.es/sites/fecem/files/users/transferencia/Catedra/CajaRural/Alberto%20Cervera.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "bodegas-crial",
+    "empresa": "Bodegas Crial",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Lledó",
+    "sector": "Bodega IGP Vino de la Tierra Bajo Aragón",
+    "lineas_try": [
+      "Athenea",
+      "Bots",
+      "Ciberseguridad"
+    ],
+    "angulo_entrada": "Premiada en Grenaches du Monde 2026 y activa en la futura DO Matarraña, que exigirá más trazabilidad",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Email + llamada",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/bodegas-crial-de-lledo-tempore-de-lecera-premiadas-grenaches-du-monde-2026/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "venta-d-aubert",
+    "empresa": "Venta d'Aubert",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Cretas",
+    "sector": "Bodega con enoturismo",
+    "lineas_try": [
+      "Bots",
+      "trygestión"
+    ],
+    "angulo_entrada": "Reservas de visitas y consultas de enoturismo automatizables",
+    "contacto": {
+      "texto": "visitas@ventadaubert.com · ventadaubert.com",
+      "emails": [
+        "visitas@ventadaubert.com"
+      ],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Email con propuesta de bot",
+    "fecha_proxima_accion": null,
+    "fuente": "https://guiapenin.wine/winetourism-bodega-venta-daubert",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "frutos-secos-gil",
+    "empresa": "Frutos Secos Gil",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Pendiente de verificar",
+    "sector": "Frutos secos",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Alérgenos y lotes: la trazabilidad es crítica",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar sede y contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/empresarios-matarrana-abordan-retos-reivindicaciones-actualidad-sector-celebracion-25-aniversario/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "segurana-lombarte",
+    "empresa": "Segurana Lombarte",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Valderrobres",
+    "sector": "Carpintería y mueble (más de 130 años)",
+    "lineas_try": [
+      "trygestión",
+      "Soporte"
+    ],
+    "angulo_entrada": "Reconocimiento a la Trayectoria Empresarial 2026 del Matarraña: buena excusa para felicitar y presentarse",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/empresarios-matarrana-abordan-retos-reivindicaciones-actualidad-sector-celebracion-25-aniversario/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "matadero-comarcal-de-valderrobres",
+    "empresa": "Matadero Comarcal de Valderrobres",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Valderrobres",
+    "sector": "Matadero",
+    "lineas_try": [
+      "Athenea",
+      "Ganadex"
+    ],
+    "angulo_entrada": "Trazabilidad de la canal desde la granja",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.iberinform.es/empresa/2222176/secadero-jamones-juan-gargallo",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "bodegas-tempore",
+    "empresa": "Bodegas Tempore",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Campo de Belchite",
+    "municipio": "Lécera",
+    "sector": "Bodega IGP Vino de la Tierra Bajo Aragón",
+    "lineas_try": [
+      "Athenea",
+      "Bots"
+    ],
+    "angulo_entrada": "Premiada en Grenaches du Monde 2026",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Email + llamada",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/bodegas-crial-de-lledo-tempore-de-lecera-premiadas-grenaches-du-monde-2026/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "alimentacion-aragonia-2002-s-l",
+    "empresa": "Alimentación Aragonia 2002 S.L.",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Jiloca",
+    "municipio": "Calamocha",
+    "sector": "Jamón, embutidos y cestas de Navidad con venta online",
+    "lineas_try": [
+      "trygestión",
+      "Bots",
+      "Ciberseguridad"
+    ],
+    "angulo_entrada": "Ahora mismo en campaña de Navidad: pedidos online y consultas de clientes. Contactar en enero con el análisis de la campaña",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada en enero",
+    "fecha_proxima_accion": null,
+    "fuente": "https://emprendedores.es/comunicados-de-empresa/jamones-embutidos-y-tradicion-aragonia-prepara-sus-cestas-de-navidad-en-el-corazon-de-teruel/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "valverde-airesano-1929-airesano-foods",
+    "empresa": "Valverde Airesano 1929 / Airesano Foods",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Gúdar-Javalambre",
+    "municipio": "La Puebla de Valverde",
+    "sector": "Jamón curado",
+    "lineas_try": [
+      "Athenea",
+      "Ciberseguridad"
+    ],
+    "angulo_entrada": "Secadero en zona DOP: trazabilidad de piezas",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://infonif.economia3.com/ranking/ventas-empresas/teruel",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "secadero-jamones-juan-gargallo-s-l",
+    "empresa": "Secadero Jamones Juan Gargallo S.L.",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Comunidad de Teruel",
+    "municipio": "Teruel",
+    "sector": "Secadero de jamón",
+    "lineas_try": [
+      "Athenea"
+    ],
+    "angulo_entrada": "Secadero de tamaño pyme: encaja con Athenea sin ERP grande previo",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.iberinform.es/empresa/2222176/secadero-jamones-juan-gargallo",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "la-monrealense-industria-carnica",
+    "empresa": "La Monrealense Industria Cárnica",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Jiloca",
+    "municipio": "Monreal del Campo",
+    "sector": "Industria cárnica",
+    "lineas_try": [
+      "Athenea",
+      "Ganadex"
+    ],
+    "angulo_entrada": "Cadena cárnica: trazabilidad de la granja al producto",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.iberinform.es/empresa/2222176/secadero-jamones-juan-gargallo",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "ganados-artigot-s-l",
+    "empresa": "Ganados Artigot S.L.",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Comunidad de Teruel",
+    "municipio": "Teruel",
+    "sector": "Carne de ovino y caprino",
+    "lineas_try": [
+      "Ganadex",
+      "Athenea"
+    ],
+    "angulo_entrada": "Ovino y caprino: gestión de explotaciones y trazabilidad",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.alimarket.es/buscador_empresas_resultados/area-alimentacion/donde-ESP_44",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "macana-fish-s-l",
+    "empresa": "Macana Fish S.L.",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Gúdar-Javalambre",
+    "municipio": "Albentosa",
+    "sector": "Semiconservas de pescado",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Lotes, APPCC y caducidades",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.alimarket.es/buscador_empresas_resultados/area-alimentacion/donde-ESP_44",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "cereales-teruel-s-coop",
+    "empresa": "Cereales Teruel S. Coop.",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Comunidad de Teruel",
+    "municipio": "Teruel",
+    "sector": "Cooperativa de cereal con implantación en toda la provincia",
+    "lineas_try": [
+      "trygestión",
+      "Ganadex",
+      "Soporte"
+    ],
+    "angulo_entrada": "Muchos socios y almacenes repartidos: soporte in situ y gestión de aportaciones",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://zaguan.unizar.es/record/57201/files/TAZ-TFG-2016-1678.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "s-coop-agraria-virgen-de-la-oliva",
+    "empresa": "S. Coop. Agraria Virgen de la Oliva",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Cinco Villas",
+    "municipio": "Ejea de los Caballeros",
+    "sector": "Cooperativa agraria (suministros, cereal, almacenes en varias localidades)",
+    "lineas_try": [
+      "trygestión",
+      "Ciberseguridad",
+      "Soporte"
+    ],
+    "angulo_entrada": "Varias instalaciones en Cinco Villas y participación en proyectos de innovación",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada a dirección general",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.aragon.es/documents/d/guest/ficha-resumen-grupo-gcp2020002100",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "agroalimentaria-de-aragon-coop-ltda",
+    "empresa": "Agroalimentaria de Aragón Coop. Ltda.",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Cinco Villas",
+    "municipio": "Ejea de los Caballeros",
+    "sector": "Comercio mayorista de frutas y verduras",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Mayorista: lotes, proveedores y expediciones",
+    "contacto": {
+      "texto": "976 662 795",
+      "emails": [],
+      "telefonos": [
+        "976 662 795"
+      ],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Llamada",
+    "fecha_proxima_accion": null,
+    "fuente": "https://empresite.eleconomista.es/AGROALIMENTARIA-ARAGON.html",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "cooperativa-san-miguel-de-tauste",
+    "empresa": "Cooperativa San Miguel de Tauste",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Cinco Villas",
+    "municipio": "Tauste",
+    "sector": "Cooperativa agraria",
+    "lineas_try": [
+      "trygestión",
+      "Athenea"
+    ],
+    "angulo_entrada": "Participa en el grupo de cooperación de fruta de hueso del Gobierno de Aragón",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.aragon.es/documents/d/guest/ficha-resumen-grupo-gcp2021002000",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "grandes-vinos",
+    "empresa": "Grandes Vinos (Coop. San José)",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Campo de Cariñena",
+    "municipio": "Aguarón",
+    "sector": "Bodega cooperativa DOP Cariñena",
+    "lineas_try": [
+      "Ciberseguridad",
+      "Bots",
+      "Athenea"
+    ],
+    "angulo_entrada": "Bodega grande y exportadora: probablemente con ERP; entrar por ciberseguridad",
+    "contacto": {
+      "texto": "coopsanjose@grandesvinos.com · grandesvinos.com",
+      "emails": [
+        "coopsanjose@grandesvinos.com"
+      ],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Diagnóstico de ciberseguridad",
+    "fecha_proxima_accion": null,
+    "fuente": "https://elvinodelaspiedras.es/en/wp-content/uploads/sites/3/2021/06/Listado-Bodegas-Certificadas-DOP.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "bodegas-san-valero",
+    "empresa": "Bodegas San Valero",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Campo de Cariñena",
+    "municipio": "Cariñena",
+    "sector": "Bodega DOP Cariñena desde 1944, exporta a EE. UU.",
+    "lineas_try": [
+      "Athenea",
+      "Ciberseguridad"
+    ],
+    "angulo_entrada": "Exportación: trazabilidad y seguridad de datos",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.gourmets.net/salon-gourmets/2024/exhibitors-catalogue/bodegas-san-valero",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "bodegas-paniza",
+    "empresa": "Bodegas Paniza",
+    "prioridad": "B",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Campo de Cariñena",
+    "municipio": "Paniza",
+    "sector": "Bodega cooperativa DOP Cariñena",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Cooperativa: aportaciones de uva de los socios y trazabilidad",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://jeroboams.co.uk/?p=947237",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "bodegas-san-alejandro",
+    "empresa": "Bodegas San Alejandro",
+    "prioridad": "B",
+    "estado": "Por contactar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Comunidad de Calatayud",
+    "municipio": "Miedes de Aragón",
+    "sector": "Bodega DOP Calatayud con enoturismo",
+    "lineas_try": [
+      "Bots",
+      "Athenea"
+    ],
+    "angulo_entrada": "Visitas y catas reservables: atención automatizable",
+    "contacto": {
+      "texto": "contacto@san-alejandro.com · san-alejandro.com",
+      "emails": [
+        "contacto@san-alejandro.com"
+      ],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Email con propuesta de bot",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.zaragoza.es/cont/paginas/turismo/pdf/guia%20escapada%20enoturismo.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "zafan-recubrimientos",
+    "empresa": "Zafán Recubrimientos",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Martín",
+    "municipio": "La Puebla de Híjar",
+    "sector": "Recubrimientos industriales",
+    "lineas_try": [
+      "trygestión",
+      "Soporte",
+      "Ciberseguridad"
+    ],
+    "angulo_entrada": "Sirve a varias zonas de España desde Venta del Barro",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/poligono-venta-barro-puebla-emplea-mas-700-personas/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "talleres-venta-del-barro",
+    "empresa": "Talleres Venta del Barro",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Martín",
+    "municipio": "La Puebla de Híjar",
+    "sector": "Taller (premio nacional)",
+    "lineas_try": [
+      "trygestión",
+      "Soporte"
+    ],
+    "angulo_entrada": "Pyme veterana del polígono",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/venta-barro-emplea-20-empresas-mas-de-600-personas-procedentes-bajo-aragon-zaragoza/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "ecogypsum-alabaster-s-l",
+    "empresa": "Ecogypsum Alabaster S.L.",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Martín",
+    "municipio": "La Puebla de Híjar",
+    "sector": "Alabastro",
+    "lineas_try": [
+      "trygestión",
+      "Athenea"
+    ],
+    "angulo_entrada": "Producción por lotes",
+    "contacto": {
+      "texto": "ecogypsum.es",
+      "emails": [],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.infoagro.com/empresas/amp/?id=20895",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "reales-almazaras-de-alcaniz",
+    "empresa": "Reales Almazaras de Alcañiz",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcañiz",
+    "sector": "Almazara",
+    "lineas_try": [
+      "Athenea"
+    ],
+    "angulo_entrada": "Actividad pendiente de verificar",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar que sigue activa",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/premian-11-almazaras-do-bajo-aragon-concurso-internacional-terraolivo-2021/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "foz-masana-s-l",
+    "empresa": "Foz Masana S.L.",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcañiz",
+    "sector": "Distribución de maderas",
+    "lineas_try": [
+      "trygestión",
+      "Soporte"
+    ],
+    "angulo_entrada": "Distribución con stock",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.alimarket.es/buscador_empresas_resultados/area-construccion/donde-ESP_44",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "suministros-cumar-alcaniz",
+    "empresa": "Suministros Cumar Alcañiz",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcañiz",
+    "sector": "Suministros",
+    "lineas_try": [
+      "trygestión",
+      "Soporte"
+    ],
+    "angulo_entrada": "Distribución local",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar actividad y contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.iberinform.es/empresa/6745073/fertinagro-fertesa",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "cristaleria-alcorisa",
+    "empresa": "Cristalería Alcorisa",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcorisa",
+    "sector": "Cristalería",
+    "lineas_try": [
+      "Soporte",
+      "trygestión"
+    ],
+    "angulo_entrada": "Se instaló en el polígono El Royal en 2023",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/dos-nuevas-empresas-poligono-alcorisa-crearan-13-puestos-trabajo/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "estaciones-de-servicio-murria-hermanos",
+    "empresa": "Estaciones de Servicio Murria Hermanos",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcañiz",
+    "sector": "Estaciones de servicio",
+    "lineas_try": [
+      "Soporte",
+      "Ciberseguridad"
+    ],
+    "angulo_entrada": "Ampliando a Alcorisa: TPV y sistemas en varias estaciones",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/dos-nuevas-empresas-poligono-alcorisa-crearan-13-puestos-trabajo/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "automoviles-y-talleres-andres-s-l",
+    "empresa": "Automóviles y Talleres Andrés S.L.",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcorisa",
+    "sector": "Automoción",
+    "lineas_try": [
+      "trygestión",
+      "Soporte"
+    ],
+    "angulo_entrada": "Concesionario y taller",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://infonif.economia3.com/ranking/ventas-empresas/teruel",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "cooperativa-del-campo-san-lamberto",
+    "empresa": "Cooperativa del Campo San Lamberto",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Bajo Aragón-Caspe",
+    "municipio": "Caspe",
+    "sector": "Cooperativa agrícola",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Cooperativa local",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.qdq.com/a/casas/zaragoza/fabara",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "cooperativa-de-mazaleon",
+    "empresa": "Cooperativa de Mazaleón",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Mazaleón",
+    "sector": "Cooperativa de fruta (DOP Melocotón de Calanda)",
+    "lineas_try": [
+      "trygestión"
+    ],
+    "angulo_entrada": "Ha avisado de riesgo de cierre: no priorizar",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Esperar",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/cooperativa-mazaleon-alerta-cierre-cada-vez-mas-cerca/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "mas-de-torubio",
+    "empresa": "Mas de Torubio",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Cretas",
+    "sector": "Bodega",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Bodega pequeña de la zona",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://diariodeteruel.es/uploads/diariodeteruel/noticias/2025/04-abril/250411-revvino.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "dominio-maestrazgo",
+    "empresa": "Dominio Maestrazgo",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Bajo Aragón",
+    "municipio": "Alcorisa",
+    "sector": "Bodega",
+    "lineas_try": [
+      "Athenea",
+      "Bots"
+    ],
+    "angulo_entrada": "Premiada en Grenaches du Monde",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/dominio-maestrazgo-bodegas-crial-ignacio-guallart-premiadas-grenaches-du-monde/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "horno-llerda",
+    "empresa": "Horno Llerda",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Cretas",
+    "sector": "Obrador",
+    "lineas_try": [
+      "Athenea",
+      "trygestión"
+    ],
+    "angulo_entrada": "Obrador con Marca de Calidad Matarraña",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/marca-calidad-territorial-matarrana-modelo-comarca-granadina-alpujarra/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "mieles-berge",
+    "empresa": "Mieles Berge",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Matarraña",
+    "municipio": "Valderrobres",
+    "sector": "Miel",
+    "lineas_try": [
+      "Athenea"
+    ],
+    "angulo_entrada": "Lotes y trazabilidad de miel",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.lacomarca.net/alumnos-empresarios-cierran-xviii-gastronomicas-ies-matarrana-poniendo-foco-vino/",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "don-jate",
+    "empresa": "Don Jate",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Pendiente",
+    "municipio": "Pendiente de verificar",
+    "sector": "Jamón",
+    "lineas_try": [
+      "Athenea"
+    ],
+    "angulo_entrada": "Secadero de la provincia",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar sede y contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.iberinform.es/empresa/2222176/secadero-jamones-juan-gargallo",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "coaliment-aragon-s-a",
+    "empresa": "Coaliment Aragón S.A.",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Comunidad de Teruel",
+    "municipio": "Teruel",
+    "sector": "Distribución alimentaria (Covalco)",
+    "lineas_try": [
+      "Ciberseguridad",
+      "Soporte"
+    ],
+    "angulo_entrada": "Parte de un grupo mayor: solo ciberseguridad o soporte",
+    "contacto": {
+      "texto": "covalco.es",
+      "emails": [],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar interlocutor",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.informa.es/directorio-empresas/Localidad_TERUEL.html",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "turomas-rent-services-s-l",
+    "empresa": "Turomas Rent Services S.L.",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Gúdar-Javalambre",
+    "municipio": "Rubielos de Mora",
+    "sector": "Alquiler de maquinaria",
+    "lineas_try": [
+      "trygestión",
+      "Soporte"
+    ],
+    "angulo_entrada": "Alquileres, flota y mantenimientos",
+    "contacto": {
+      "texto": "turomas.com",
+      "emails": [],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.informa.es/directorio-empresas/O000_ACTIVIDADES-ADMINISTRATIVAS-SERVICIOS-AUXILIARES/Provincia_TERUEL.html",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "tervalis-fertinagro-biotech",
+    "empresa": "Térvalis / Fertinagro Biotech",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Teruel",
+    "comarca": "Comunidad de Teruel",
+    "municipio": "Teruel",
+    "sector": "Grupo industrial de fertilizantes y alimentación",
+    "lineas_try": [
+      "Ciberseguridad",
+      "Bots"
+    ],
+    "angulo_entrada": "Grupo grande con sistemas propios: solo como cuenta estratégica de ciberseguridad",
+    "contacto": {
+      "texto": "fertinagro.es",
+      "emails": [],
+      "telefonos": [],
+      "verificado": true,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar interlocutor",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.informa.es/directorio-empresas/Localidad_TERUEL.html",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  },
+  {
+    "id": "bodegas-borsao",
+    "empresa": "Bodegas Borsao",
+    "prioridad": "C",
+    "estado": "Por investigar",
+    "pais": "España",
+    "provincia": "Zaragoza",
+    "comarca": "Campo de Borja",
+    "municipio": "Borja",
+    "sector": "Bodega DOP Campo de Borja",
+    "lineas_try": [
+      "Ciberseguridad",
+      "Athenea"
+    ],
+    "angulo_entrada": "Bodega grande: entrar por ciberseguridad",
+    "contacto": {
+      "texto": "Pendiente",
+      "emails": [],
+      "telefonos": [],
+      "verificado": false,
+      "tipo": "corporativo",
+      "base_legal": "interés legítimo B2B sobre datos corporativos públicos (revisar antes de enviar)"
+    },
+    "proxima_accion": "Verificar contacto",
+    "fecha_proxima_accion": null,
+    "fuente": "https://www.zaragoza.es/cont/paginas/turismo/pdf/guia%20enoturismo.pdf",
+    "fecha_deteccion": "2026-11-20",
+    "guion_id": null
+  }
+]
