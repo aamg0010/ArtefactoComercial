@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { PrismaClient } from '@prisma/client';
 import { setCompanyCadenceStatus } from './lib/cadence';
+import { completeTask } from './lib/tasks';
 import { afterAll, describe, expect, it } from 'vitest';
 
 const run = promisify(execFile);
@@ -49,7 +50,21 @@ describe.runIf(enabled)('seed e importación de hoja', () => {
     await run(process.execPath, [tsx, 'prisma/seed-real.ts'], { env });
     const company = await prisma.company.findUniqueOrThrow({ where: { sourceId: 'la-calandina-s-coop' } });
     const cadence = await prisma.companyCadence.findFirstOrThrow({ where: { companyId: company.id } });
-    await setCompanyCadenceStatus(prisma, cadence.id, 'PAUSED');
+    await prisma.$transaction((tx) => setCompanyCadenceStatus(tx, cadence.id, 'PAUSED'));
     await expect(prisma.task.count({ where: { companyCadenceId: cadence.id, status: 'PENDING', dueAt: { gt: new Date() } } })).resolves.toBe(0);
+  }, 30_000);
+  it.each(['Contactado', 'No contesta', 'Buzón', 'Interesado', 'Reunión agendada', 'No interesado', 'Baja'])('registra el resultado %s', async (result) => {
+    await run(process.execPath, [tsx, 'prisma/seed-real.ts'], { env });
+    const company = await prisma.company.findUniqueOrThrow({ where: { sourceId: 'cooperativa-ganadera-de-caspe' } });
+    const task = await prisma.task.create({ data: { companyId: company.id, type: 'CALL', title: `Resultado ${result}`, dueAt: new Date('2026-11-23T00:00:00.000Z') } });
+    await completeTask(prisma, task.id, result);
+    await expect(prisma.task.findUniqueOrThrow({ where: { id: task.id } })).resolves.toMatchObject({ status: 'COMPLETED', result });
+    if (result === 'Reunión agendada') await expect(prisma.company.findUniqueOrThrow({ where: { id: company.id } })).resolves.toMatchObject({ pipelineStage: 'MEETING' });
+  }, 30_000);
+  it('rechaza un segundo resultado de la misma tarea', async () => {
+    await run(process.execPath, [tsx, 'prisma/seed-real.ts'], { env });
+    const task = await prisma.task.findFirstOrThrow({ where: { status: 'PENDING' } });
+    await completeTask(prisma, task.id, 'Contactado');
+    await expect(completeTask(prisma, task.id, 'Contactado')).rejects.toThrow('ya fue procesada');
   }, 30_000);
 });
