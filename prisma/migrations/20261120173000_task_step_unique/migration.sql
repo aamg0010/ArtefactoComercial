@@ -1,4 +1,4 @@
-﻿-- AlterTable
+-- AlterTable
 ALTER TABLE "Task" ALTER COLUMN "dueAt" DROP NOT NULL;
 
 -- CreateIndex

@@ -22,6 +22,9 @@ describe.runIf(enabled)('seed e importación de hoja', () => {
     await expect(prisma.company.count()).resolves.toBe(56);
     await expect(prisma.script.count()).resolves.toBe(5);
     await expect(prisma.opportunity.count()).resolves.toBe(121);
+    await expect(prisma.task.count()).resolves.toBeGreaterThanOrEqual(56);
+    const dated = await prisma.task.findMany({ where: { dueAt: new Date('2026-11-23T00:00:00.000Z') }, include: { company: true } });
+    expect(dated.map((task) => task.company.sourceId)).toEqual(expect.arrayContaining(['la-calandina-s-coop', 'cooperativa-ganadera-de-caspe']));
   }, 60_000);
   it('actualiza el estado de una empresa importada', async () => {
     const csv = join(tmpdir(), 'try-comercial-state-update.csv');
