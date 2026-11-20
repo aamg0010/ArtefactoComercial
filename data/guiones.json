@@ -1,0 +1,542 @@
+{
+  "cadencia_estandar": [
+    {
+      "dia": 1,
+      "canal": "email",
+      "accion": "Email inicial (emails[0])"
+    },
+    {
+      "dia": 1,
+      "canal": "llamada",
+      "accion": "Llamada de presentación (llamada); si no contesta, mensaje de voz"
+    },
+    {
+      "dia": 3,
+      "canal": "llamada",
+      "accion": "Segundo intento de llamada"
+    },
+    {
+      "dia": 6,
+      "canal": "email",
+      "accion": "Email de seguimiento 1"
+    },
+    {
+      "dia": 10,
+      "canal": "llamada",
+      "accion": "Llamada + mensaje de voz"
+    },
+    {
+      "dia": 15,
+      "canal": "email",
+      "accion": "Email de cierre de ciclo; si no hay respuesta, estado 'En pausa' y recordatorio a 90 días"
+    }
+  ],
+  "guiones": [
+    {
+      "id": "la-calandina",
+      "empresa": "La Calandina S. Coop.",
+      "municipio": "Calanda (Teruel)",
+      "fecha_primer_contacto": "2026-11-23",
+      "interlocutor": "Antonio Cerdán, gerente (citado como gerente en prensa de 2025; confirmar)",
+      "producto_principal": "Athenea",
+      "productos_secundarios": [
+        "trygestión",
+        "Ciberseguridad"
+      ],
+      "estudio": {
+        "resumen": "Cooperativa fundada en 1974 por 53 agricultores y hoy con 158 socios. Comercializa melocotón de Calanda DOP y aceite DOP Aceite del Bajo Aragón, en convencional y ecológico, con las marcas La Calandina y El Milagro. Proveedor de EROSKI desde 2011 y premio EROSKI al productor aragonés en octubre de 2025. En campaña llega a unas 100 personas trabajando.",
+        "datos_clave": [
+          "158 socios (EROSKI, oct. 2025)",
+          "Unos 850.000 kg de melocotón DOP en la campaña 2025 (La Comarca)",
+          "Único productor ecológico de melocotón de Calanda DOP (Teruel Social y Cooperativo)",
+          "Aceite premiado (Gran Prestige Gold en Terraolivo) y habla de campaña récord de aceite",
+          "Venta directa online de todos sus productos"
+        ],
+        "dolores_probables": [
+          "Trazabilidad DOP y ecológica separada por lote, parcela y socio, con auditorías del Consejo Regulador y del cliente (EROSKI)",
+          "Dos campañas casi seguidas (melocotón y aceite) con mucha mano de obra temporal",
+          "Liquidaciones a 158 socios según kilos, calidad y categoría",
+          "Venta online además de gran distribución: pedidos, stock y facturación en varios canales"
+        ],
+        "preguntas_diagnostico": [
+          "Cuando EROSKI o el Consejo Regulador le piden la trazabilidad de un lote, ¿cuánto tardan en sacarla?",
+          "¿La parte ecológica la llevan en el mismo sistema que la convencional o por separado?",
+          "¿Cómo calculan hoy la liquidación de cada socio: programa, hojas de cálculo o asesoría?",
+          "¿Los pedidos de la tienda online entran solos al almacén o alguien los pasa a mano?"
+        ],
+        "fuentes": [
+          "https://corporativo.eroski.es/wp-content/uploads/2025/10/20251010_NP_La-Calandina-Premio-EROSKI-al-productor-aragones.pdf",
+          "https://teruelsocialycooperativo.unizar.es/wp-content/uploads/2022/05/Cartel-ESS-Teruel-10_Coop-La-Calandina.pdf",
+          "https://www.lacomarca.net/produccion-melocoton-amarillo-embolsado-crece-15-calanda-ultima-decada/"
+        ]
+      },
+      "llamada": {
+        "apertura": "Buenos días, ¿hablo con Antonio Cerdán? Soy Andrés, de try!, una empresa de software de aquí, del Bajo Aragón. Le llamo por lo del premio de EROSKI, enhorabuena. ¿Tiene dos minutos o le pillo en mal momento?",
+        "motivo": "Trabajamos con empresas que producen y venden con denominación de origen. Cuando un cliente grande o el Consejo Regulador pide la trazabilidad de un lote, que salga en un minuto y no en una mañana. Y que la liquidación de los socios salga sola de los kilos que entran.",
+        "pregunta_clave": "Cuando EROSKI le pide la trazabilidad de un lote de melocotón, ¿hoy cuánto tardan en tenerla?",
+        "propuesta_valor": "Con Athenea cada caja va ligada al socio, la parcela, la fecha y la categoría desde que entra en la cooperativa. Eso le da tres cosas: auditorías sin sustos, liquidaciones a socios sin rehacer cuentas y saber qué categoría y qué cliente le dejan más margen para la próxima campaña.",
+        "objeciones": {
+          "ya_tenemos_programa": "Lo normal es que ya tengan algo, y no venimos a cambiar lo que funciona. Le pregunto una cosa: cuando necesita la trazabilidad de un lote o la liquidación de un socio, ¿lo saca del programa en un minuto o hay que juntar hojas de cálculo? Si es lo segundo, ahí es donde aportamos, conectando con lo que ya tienen.",
+          "envieme_info": "Se la envío hoy mismo. Para no mandarle un catálogo genérico, ¿me dice en una frase qué le quita más tiempo ahora mismo: las auditorías, las liquidaciones o la venta online? Así le mando solo lo que le sirve.",
+          "no_es_momento": "Lo entiendo perfectamente, con la campaña del aceite encima. ¿Le parece que le llame en la segunda quincena de enero? Le dejo apuntado y no le molesto antes.",
+          "precio": "Depende del tamaño y de lo que se use, y no le voy a dar una cifra a ciegas. Lo que sí hacemos es empezar por un diagnóstico corto, sin coste, y le digo cuánto le ahorraría y cuánto costaría. Si no salen las cuentas, se lo diré yo mismo.",
+          "somos_cooperativa_decide_consejo": "Claro, y es lógico. Lo que le propongo es preparar un resumen de una página con números, para que lo pueda llevar usted al consejo rector sin tener que explicarlo todo de memoria."
+        },
+        "cierre": "¿Le parece que vaya a verles media hora, cuando acabe el pico del aceite, y le enseño cómo quedaría un lote suyo de punta a punta? ¿Le va mejor la última semana de enero o la primera de febrero?",
+        "mensaje_voz": "Antonio, buenos días, soy Andrés, de try!, empresa de software del Bajo Aragón. Le llamaba para felicitarle por el premio de EROSKI y comentarle una forma de tener la trazabilidad DOP y las liquidaciones de socios sin hojas de cálculo. Le envío un correo y le vuelvo a llamar el jueves. Mi teléfono es [TELÉFONO]. Gracias."
+      },
+      "emails": [
+        {
+          "dia": 1,
+          "asunto": "Trazabilidad DOP de La Calandina, del lote al lineal",
+          "cuerpo": "Buenos días, Antonio:\n\nEnhorabuena por el premio de EROSKI al productor aragonés. Ser proveedor de una cadena así desde 2011 dice mucho del trabajo de la cooperativa.\n\nSoy Andrés, de try!, una empresa de software del Bajo Aragón. Ayudamos a productores con denominación de origen a tres cosas:\n- Sacar la trazabilidad de cualquier lote (socio, parcela, fecha, categoría) en un minuto, para auditorías del Consejo Regulador o de clientes.\n- Calcular las liquidaciones de los socios directamente a partir de lo que entra.\n- Ver qué producto, categoría y canal dejan más margen.\n\nSé que ahora están con el aceite. ¿Le parece que hablemos 20 minutos a final de enero? Si me dice qué día le va bien, me adapto.\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque La Calandina es una cooperativa de la zona con producción DOP, el sector en el que trabajamos. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 6,
+          "asunto": "Re: Trazabilidad DOP de La Calandina",
+          "cuerpo": "Antonio, buenos días:\n\nLe escribí la semana pasada. Le dejo una pregunta corta: si mañana EROSKI les pidiera el origen exacto de un lote de melocotón ecológico, ¿cuánto tardarían en dárselo?\n\nSi la respuesta es «más de diez minutos», creo que le puedo ahorrar trabajo. ¿Hablamos a final de enero?\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unos días sobre trazabilidad DOP. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 15,
+          "asunto": "Cierro el tema por ahora",
+          "cuerpo": "Antonio:\n\nNo quiero insistir más en plena campaña. Si en algún momento le interesa ver cómo quedaría un lote suyo trazado de punta a punta, o simplificar las liquidaciones de socios, responda a este correo y lo preparo.\n\nMucha suerte con el aceite.\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unas semanas sobre trazabilidad DOP. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        }
+      ],
+      "prospecto_id": "la-calandina-s-coop",
+      "cadencia": [
+        {
+          "dia": 1,
+          "canal": "email",
+          "accion": "Email inicial (emails[0])"
+        },
+        {
+          "dia": 1,
+          "canal": "llamada",
+          "accion": "Llamada de presentación (llamada); si no contesta, mensaje de voz"
+        },
+        {
+          "dia": 3,
+          "canal": "llamada",
+          "accion": "Segundo intento de llamada"
+        },
+        {
+          "dia": 6,
+          "canal": "email",
+          "accion": "Email de seguimiento 1"
+        },
+        {
+          "dia": 10,
+          "canal": "llamada",
+          "accion": "Llamada + mensaje de voz"
+        },
+        {
+          "dia": 15,
+          "canal": "email",
+          "accion": "Email de cierre de ciclo; si no hay respuesta, estado 'En pausa' y recordatorio a 90 días"
+        }
+      ]
+    },
+    {
+      "id": "cooperativa-ganadera-caspe",
+      "empresa": "Cooperativa Ganadera de Caspe (Red Ganadera Caspe)",
+      "municipio": "Caspe (Zaragoza)",
+      "fecha_primer_contacto": "2026-11-23",
+      "interlocutor": "Dirección general o responsable de innovación / servicios técnicos (en 2020 el director general era Tomás Fillola y el presidente Raúl Panillo; confirmar)",
+      "producto_principal": "Ganadex",
+      "productos_secundarios": [
+        "Ciberseguridad",
+        "Bots"
+      ],
+      "estudio": {
+        "resumen": "Cooperativa fundada en 1986 y empresa líder de la Red Ganadera Caspe. Se dedica casi por completo al porcino de capa blanca, con fábrica de piensos propia, nutrición, comercialización de animales, servicios veterinarios y venta de medicamentos para sus socios. Tiene explotaciones en Aragón, Lleida y Tarragona. Cerró 2020 con casi 174 M€ de facturación y 146 empleados.",
+        "datos_clave": [
+          "Reconocida Entidad Asociativa Prioritaria por el MAPA (febrero de 2025)",
+          "Casi 174 M€ de facturación y 146 empleados en 2020",
+          "Ha buscado perfiles de ingeniería de nuevos proyectos y de medio ambiente (gestión de purines, planes de abonado)",
+          "Socia de Qualimac y del clúster porcino catalán INNOVACC",
+          "Placas solares en la fábrica de piensos: apuesta por sostenibilidad"
+        ],
+        "dolores_probables": [
+          "Datos de muchas granjas familiares (socios) dispersos: producción, consumos de pienso, bajas, medicamentos",
+          "Gestión de purines y planes de abonado: obligación legal y medioambiental creciente",
+          "Seguimiento técnico y veterinario repartido en varias provincias",
+          "Una cooperativa grande y conectada es objetivo habitual de ciberataques"
+        ],
+        "preguntas_diagnostico": [
+          "¿Cómo les llegan hoy los datos de cada granja socia: aplicación, papel, llamadas?",
+          "¿El plan de abonado y el registro de purines lo lleva cada ganadero o lo centralizan ustedes?",
+          "¿Los técnicos y veterinarios ven el historial de cada granja desde el móvil cuando la visitan?",
+          "¿Cuándo hicieron la última revisión de ciberseguridad de la fábrica y las oficinas?"
+        ],
+        "fuentes": [
+          "https://www.interempresas.net/porcino/587842-La-Cooperativa-Ganadera-de-Caspe-es-reconocida-como-Entidad-Asociativa-Prioritaria.html",
+          "https://www.3tres3.com/latam/guia333/empresas/cooperativa-ganadera-de-caspe/seguidores",
+          "https://www.lacomarca.net/sector-trabajando-ser-referente-produccion-mundial/",
+          "https://eps.unizar.es/sites/eps/files/users/ccano/ofertas/EMPLEO/generando_empleo._responsable_de_medio_ambiente.pdf"
+        ]
+      },
+      "llamada": {
+        "apertura": "Buenos días, soy Andrés, de try!, una empresa de software del Bajo Aragón. Quería hablar con la persona que lleva innovación o servicios técnicos a granjas. ¿Me puede indicar con quién?",
+        "motivo": "Hemos visto el reconocimiento como Entidad Asociativa Prioritaria, enhorabuena. Tenemos una plataforma, Ganadex, pensada para que una cooperativa tenga los datos de todas sus granjas socias en un solo sitio: producción, pienso, sanidad y purines.",
+        "pregunta_clave": "Hoy, cuando un técnico quiere comparar dos granjas socias, ¿de dónde saca los datos?",
+        "propuesta_valor": "Ganadex junta los datos de cada explotación y los convierte en decisiones: qué granjas pierden margen por conversión de pienso, cuáles van retrasadas en el plan de abonado y dónde hay un problema sanitario antes de que se extienda. Menos riesgo legal con los purines y más rentabilidad por socio.",
+        "objeciones": {
+          "ya_tenemos_programa": "Lo normal es que ya tengan algo, y no venimos a cambiar lo que funciona. Le pregunto una cosa: cuando necesita comparar el índice de conversión de dos granjas socias, ¿lo saca del programa en un minuto o hay que juntar hojas de cálculo? Si es lo segundo, ahí es donde aportamos, conectando con lo que ya tienen.",
+          "envieme_info": "Se la envío hoy mismo. Para no mandarle un catálogo genérico, ¿me dice en una frase qué le quita más tiempo ahora mismo: los datos de granja, los purines o el seguimiento sanitario? Así le mando solo lo que le sirve.",
+          "no_es_momento": "Lo entiendo perfectamente, con todo lo que tienen en marcha. ¿Le parece que le llame en enero? Le dejo apuntado y no le molesto antes.",
+          "precio": "Depende del tamaño y de lo que se use, y no le voy a dar una cifra a ciegas. Lo que sí hacemos es empezar por un diagnóstico corto, sin coste, y le digo cuánto le ahorraría y cuánto costaría. Si no salen las cuentas, se lo diré yo mismo.",
+          "los_ganaderos_no_usan_apps": "Es lo que más oímos, y por eso Ganadex está pensado para que el ganadero apunte lo mínimo, desde el móvil, y el resto lo carguen técnicos y fábrica. ¿Le enseño cómo quedaría para una granja tipo de sus socios?"
+        },
+        "cierre": "¿Le parece que nos veamos en Caspe una hora y le enseñamos Ganadex con datos de ejemplo de una granja de cebo? ¿Le va mejor la segunda o la tercera semana de diciembre?",
+        "mensaje_voz": "Buenos días, soy Andrés, de try!, empresa de software del Bajo Aragón. Les llamo por Ganadex, una plataforma para tener los datos de todas las granjas socias, purines incluidos, en un solo sitio. Les envío un correo y vuelvo a llamar el miércoles. Mi teléfono es [TELÉFONO]."
+      },
+      "emails": [
+        {
+          "dia": 1,
+          "asunto": "Los datos de todas sus granjas socias en un solo sitio",
+          "cuerpo": "Buenos días:\n\nEnhorabuena por el reconocimiento como Entidad Asociativa Prioritaria.\n\nSoy Andrés, de try!, una empresa de software del Bajo Aragón. Hemos desarrollado Ganadex, una plataforma de gestión para el sector ganadero que permite a una cooperativa:\n- Ver en un panel la producción, el consumo de pienso y la sanidad de cada granja socia.\n- Llevar el registro de purines y los planes de abonado al día, con menos riesgo de sanción.\n- Detectar qué granjas pierden margen y por qué, con datos y no con intuición.\n\n¿Podemos tener una videollamada de 20 minutos o una visita en Caspe en diciembre? Me adapto a su agenda.\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque la Cooperativa Ganadera de Caspe es referente del porcino en la zona, el sector para el que hemos creado Ganadex. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 6,
+          "asunto": "Re: Los datos de sus granjas socias",
+          "cuerpo": "Buenos días:\n\nRetomo mi correo de la semana pasada con una pregunta concreta: hoy, ¿cuánto tarda un técnico en comparar el índice de conversión de dos granjas socias?\n\nSi es más de lo que debería, Ganadex lo resuelve. ¿Le reservo media hora en diciembre?\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unos días sobre Ganadex. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 15,
+          "asunto": "Último correo sobre Ganadex",
+          "cuerpo": "Buenos días:\n\nNo quiero llenarle la bandeja. Si más adelante quieren ver Ganadex con datos de una granja tipo, o revisar la ciberseguridad de la fábrica y las oficinas, respondan a este correo.\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unas semanas sobre Ganadex. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        }
+      ],
+      "prospecto_id": "cooperativa-ganadera-de-caspe",
+      "cadencia": [
+        {
+          "dia": 1,
+          "canal": "email",
+          "accion": "Email inicial (emails[0])"
+        },
+        {
+          "dia": 1,
+          "canal": "llamada",
+          "accion": "Llamada de presentación (llamada); si no contesta, mensaje de voz"
+        },
+        {
+          "dia": 3,
+          "canal": "llamada",
+          "accion": "Segundo intento de llamada"
+        },
+        {
+          "dia": 6,
+          "canal": "email",
+          "accion": "Email de seguimiento 1"
+        },
+        {
+          "dia": 10,
+          "canal": "llamada",
+          "accion": "Llamada + mensaje de voz"
+        },
+        {
+          "dia": 15,
+          "canal": "email",
+          "accion": "Email de cierre de ciclo; si no hay respuesta, estado 'En pausa' y recordatorio a 90 días"
+        }
+      ]
+    },
+    {
+      "id": "la-chipranesca",
+      "empresa": "La Chipranesca S.C.L.",
+      "municipio": "Chiprana (Zaragoza)",
+      "fecha_primer_contacto": "2026-11-24",
+      "interlocutor": "Francisco Negro Gasque, gerente (dato de prensa sin fecha reciente; confirmar)",
+      "producto_principal": "Athenea",
+      "productos_secundarios": [
+        "trygestión"
+      ],
+      "estudio": {
+        "resumen": "Cooperativa fundada en 1985 en Chiprana, Organización de Productores de Frutas y Hortalizas. Con casi 550 hectáreas, es una de las cooperativas frutícolas más importantes del Bajo Aragón Histórico y produce unos 12 millones de kilos al año de albaricoque, melocotón, nectarina, ciruela, cereza, higos y pera. Tiene central y cámaras frigoríficas propias y va a Fruit Logistica en Berlín.",
+        "datos_clave": [
+          "Unas 550 ha y unos 12 M kg/año (La Comarca)",
+          "Muchas especies y variedades: muchas referencias y calibres",
+          "Central con cámaras frigoríficas desde 1987",
+          "Exporta y acude a Fruit Logistica",
+          "Zona (Bajo Aragón-Caspe) muy golpeada por la caída de precios de la fruta de hueso"
+        ],
+        "dolores_probables": [
+          "Trazabilidad por socio, parcela, variedad y calibre hasta el palé y el cliente de exportación",
+          "Control de costes de confección y frío en años de precios bajos",
+          "Liquidaciones a socios con muchas variedades y categorías",
+          "Previsión de cosecha para negociar con clientes"
+        ],
+        "preguntas_diagnostico": [
+          "Cuando un cliente de exportación reclama un palé, ¿cuánto tardan en saber de qué socio y parcela salió?",
+          "¿Saben cuánto les cuesta confeccionar un kilo de cada especie?",
+          "¿Las liquidaciones a socios salen del programa o se rehacen en hojas de cálculo?",
+          "¿Cómo hacen la previsión de kilos por semana antes de la campaña?"
+        ],
+        "fuentes": [
+          "https://www.lacomarca.net/reportajes/contigo-construimos-futuro/la-chipranesca/",
+          "https://issuu.com/revistamercados/docs/fruit_logistica_2012/85",
+          "https://www.lacomarca.net/urgen-medidas-solucionar-crisis-precios-fruta-de-hueso/"
+        ]
+      },
+      "llamada": {
+        "apertura": "Buenos días, ¿hablo con Francisco Negro? Soy Andrés, de try!, empresa de software del Bajo Aragón. ¿Tiene dos minutos?",
+        "motivo": "Trabajamos con productores que necesitan saber, palé a palé, de qué socio y parcela viene la fruta, y cuánto les cuesta de verdad cada kilo que confeccionan. Con los precios como están este año, saber dónde se va el margen es más importante que nunca.",
+        "pregunta_clave": "¿Sabe hoy cuánto le cuesta confeccionar un kilo de nectarina frente a uno de albaricoque?",
+        "propuesta_valor": "Athenea registra cada entrada por socio, parcela y variedad, la sigue por confección y cámara y la liga al palé y al cliente. Así responde a una reclamación en minutos y ve el coste real por especie y calibre para decidir qué plantar y a quién vender.",
+        "objeciones": {
+          "ya_tenemos_programa": "Lo normal es que ya tengan algo, y no venimos a cambiar lo que funciona. Le pregunto una cosa: cuando necesita el coste por kilo de cada especie o el origen de un palé reclamado, ¿lo saca del programa en un minuto o hay que juntar hojas de cálculo? Si es lo segundo, ahí es donde aportamos, conectando con lo que ya tienen.",
+          "envieme_info": "Se la envío hoy mismo. Para no mandarle un catálogo genérico, ¿me dice en una frase qué le quita más tiempo ahora mismo: las reclamaciones, los costes de confección o las liquidaciones? Así le mando solo lo que le sirve.",
+          "no_es_momento": "Lo entiendo perfectamente, y justo antes de campaña es cuando mejor se prepara el sistema. ¿Le parece que le llame en la segunda semana de enero? Le dejo apuntado y no le molesto antes.",
+          "precio": "Depende del tamaño y de lo que se use, y no le voy a dar una cifra a ciegas. Lo que sí hacemos es empezar por un diagnóstico corto, sin coste, y le digo cuánto le ahorraría y cuánto costaría. Si no salen las cuentas, se lo diré yo mismo.",
+          "año_malo_no_invertimos": "Le entiendo, con estos precios cada euro cuenta. Por eso empezamos midiendo dónde se va el margen: si no encontramos ahorro que pague el sistema, no tiene sentido seguir."
+        },
+        "cierre": "¿Me deja ir a Chiprana una mañana de enero, antes de que empiece la campaña, y le enseño cómo quedaría la trazabilidad de un palé suyo? ¿Le va mejor la semana del 12 o la del 19?",
+        "mensaje_voz": "Francisco, buenos días, soy Andrés, de try!, empresa de software del Bajo Aragón. Le llamaba para comentarle cómo tener la trazabilidad palé a palé y el coste real por especie antes de la próxima campaña. Le escribo un correo y le llamo el viernes. Mi teléfono es [TELÉFONO]."
+      },
+      "emails": [
+        {
+          "dia": 1,
+          "asunto": "Coste real por kilo y trazabilidad palé a palé para la próxima campaña",
+          "cuerpo": "Buenos días, Francisco:\n\nSoy Andrés, de try!, una empresa de software del Bajo Aragón. Con los precios de la fruta como están, me imagino que saber exactamente dónde se gana y dónde se pierde es clave.\n\nCon Athenea, nuestro sistema de trazabilidad, una cooperativa como La Chipranesca puede:\n- Saber en minutos de qué socio y parcela sale cualquier palé reclamado.\n- Ver el coste real de confección y frío por especie y calibre.\n- Calcular las liquidaciones a socios sin rehacer cuentas.\n\nEl mejor momento para dejarlo listo es antes de la campaña. ¿Le parece que nos veamos en Chiprana en enero?\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque La Chipranesca es una de las cooperativas frutícolas de referencia de la zona. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 6,
+          "asunto": "Re: Coste real por kilo",
+          "cuerpo": "Francisco:\n\nUna pregunta rápida: ¿sabe hoy cuánto le cuesta confeccionar un kilo de nectarina frente a uno de albaricoque? Si la respuesta es «aproximadamente», podemos ayudarle a que sea exacta. ¿Hablamos en enero?\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unos días sobre trazabilidad y costes. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 15,
+          "asunto": "Lo dejo aquí por ahora",
+          "cuerpo": "Francisco:\n\nNo le escribo más por ahora. Si antes de la campaña quiere ver Athenea con un palé suyo de ejemplo, responda a este correo y lo preparamos.\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unas semanas sobre trazabilidad y costes. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        }
+      ],
+      "prospecto_id": "la-chipranesca-s-c-l",
+      "cadencia": [
+        {
+          "dia": 1,
+          "canal": "email",
+          "accion": "Email inicial (emails[0])"
+        },
+        {
+          "dia": 1,
+          "canal": "llamada",
+          "accion": "Llamada de presentación (llamada); si no contesta, mensaje de voz"
+        },
+        {
+          "dia": 3,
+          "canal": "llamada",
+          "accion": "Segundo intento de llamada"
+        },
+        {
+          "dia": 6,
+          "canal": "email",
+          "accion": "Email de seguimiento 1"
+        },
+        {
+          "dia": 10,
+          "canal": "llamada",
+          "accion": "Llamada + mensaje de voz"
+        },
+        {
+          "dia": 15,
+          "canal": "email",
+          "accion": "Email de cierre de ciclo; si no hay respuesta, estado 'En pausa' y recordatorio a 90 días"
+        }
+      ]
+    },
+    {
+      "id": "aceites-impelte",
+      "empresa": "Aceites Impelte del Bajo Martín S.L.",
+      "municipio": "La Puebla de Híjar (Teruel), polígono Venta del Barro",
+      "fecha_primer_contacto": "2026-11-24",
+      "interlocutor": "Javier Sánchez, propietario y maestro almazarero",
+      "producto_principal": "Athenea",
+      "productos_secundarios": [
+        "Bots",
+        "trygestión"
+      ],
+      "estudio": {
+        "resumen": "Almazara inscrita en la DOP Aceite del Bajo Aragón, fundada en 2011 por Javier Sánchez, maestro almazarero y propietario. Está en el polígono Venta del Barro de La Puebla de Híjar. Tiene marcas en PET y gamas premium en cristal (Impelte, Emerxo), más de 30 premios nacionales e internacionales y ha empezado a vender en EE. UU. con el proyecto «Mis Raíces», para el que elabora tres aceites.",
+        "datos_clave": [
+          "Premio al Mejor Aceite del Bajo Aragón (2019, y premiada de nuevo en 2021)",
+          "Grand Prestige Gold en Terraolivo 2020",
+          "Expansión a EE. UU. con «Mis Raíces» (premium, ecológico y convencional)",
+          "Sus ventas por internet se duplicaron en 2020",
+          "Elabora aceite para terceros (Mis Raíces): trazabilidad por cliente"
+        ],
+        "dolores_probables": [
+          "Trazabilidad aceituna–parcela–lote–botella, separando DOP, ecológico y marcas de terceros",
+          "Exportación a EE. UU.: documentación y trazabilidad exigentes",
+          "Venta online creciente: consultas y pedidos de particulares",
+          "Campaña concentrada (nov.–ene.) con poco tiempo para gestión"
+        ],
+        "preguntas_diagnostico": [
+          "¿Cómo separan el aceite que elaboran para Mis Raíces del de sus marcas propias?",
+          "Para exportar a EE. UU., ¿quién prepara la documentación de trazabilidad y cuánto tarda?",
+          "¿Cuántas consultas de clientes online responden a mano cada semana?",
+          "¿Los pedidos online descuentan stock solos o se apuntan aparte?"
+        ],
+        "fuentes": [
+          "https://www.lacomarca.net/la-puebla-maella-calanda-premio-mejor-aceite/",
+          "https://www.lacomarca.net/aceites-impelte-del-bajo-martin-inicia-la-expansion-a-eeuu/",
+          "https://econz.unizar.es/sites/fecem/files/users/transferencia/Catedra/Bantierra/aceites_impelte_del_bajo_araga3n.pdf",
+          "https://www.lacomarca.net/venta-on-line-aceite-salva-primavera/"
+        ]
+      },
+      "llamada": {
+        "apertura": "Javier, buenos días, soy Andrés, de try!, empresa de software de aquí al lado. Sé que está en plena campaña, así que le robo solo un minuto, ¿le va bien o le llamo a otra hora?",
+        "motivo": "He visto lo de Mis Raíces en Estados Unidos, enhorabuena. Ayudamos a almazaras que elaboran para varias marcas y exportan a tener la trazabilidad de cada botella hasta la aceituna, sin papeleo.",
+        "pregunta_clave": "¿Cómo separan hoy el aceite que elaboran para Mis Raíces del de sus propias marcas?",
+        "propuesta_valor": "Athenea liga cada entrada de aceituna a su parcela y su lote, y cada lote a la marca y al cliente. Para exportar o pasar una auditoría DOP, el informe sale solo. Y si quiere, un asistente automático responde las consultas de la tienda online mientras usted está en la almazara.",
+        "objeciones": {
+          "ya_tenemos_programa": "Lo normal es que ya tengan algo, y no venimos a cambiar lo que funciona. Le pregunto una cosa: cuando necesita la trazabilidad de un lote exportado, ¿lo saca del programa en un minuto o hay que juntar hojas de cálculo? Si es lo segundo, ahí es donde aportamos, conectando con lo que ya tienen.",
+          "envieme_info": "Se la envío hoy mismo. Para no mandarle un catálogo genérico, ¿me dice en una frase qué le quita más tiempo ahora mismo: la exportación, la trazabilidad por marca o la tienda online? Así le mando solo lo que le sirve.",
+          "no_es_momento": "Lo entiendo perfectamente, en plena campaña no es momento. ¿Le parece que le llame en la primera semana de febrero? Le dejo apuntado y no le molesto antes.",
+          "precio": "Depende del tamaño y de lo que se use, y no le voy a dar una cifra a ciegas. Lo que sí hacemos es empezar por un diagnóstico corto, sin coste, y le digo cuánto le ahorraría y cuánto costaría. Si no salen las cuentas, se lo diré yo mismo.",
+          "somos_pequeños": "Precisamente: una almazara con varias marcas, exportación y venta online tiene la complejidad de una empresa grande sin tener un departamento para ello. Para eso está pensado."
+        },
+        "cierre": "Le propongo dejarlo para cuando acabe la campaña. ¿Le parece que pase por la almazara la primera semana de febrero, media hora?",
+        "mensaje_voz": "Javier, buenos días, soy Andrés, de try!, del Bajo Aragón. Sé que está en campaña, así que seré breve: le escribo un correo sobre trazabilidad para exportar y para las marcas que elabora, y le llamo en febrero cuando esté más tranquilo. Mi teléfono es [TELÉFONO]."
+      },
+      "emails": [
+        {
+          "dia": 1,
+          "asunto": "Para después de la campaña: trazabilidad de cada botella, de la aceituna a EE. UU.",
+          "cuerpo": "Buenos días, Javier:\n\nEnhorabuena por el salto a Estados Unidos con Mis Raíces. Sé que está en plena campaña, así que le dejo esto para cuando tenga un rato.\n\nSoy Andrés, de try!, empresa de software del Bajo Aragón. Con Athenea, una almazara como Impelte puede:\n- Ligar cada botella a su lote, su parcela y su marca (propia o de terceros).\n- Sacar el informe de trazabilidad para exportar o para la DOP en un minuto.\n- Atender las consultas de la tienda online con un asistente automático.\n\n¿Le parece que pase por la almazara la primera semana de febrero?\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque Aceites Impelte es una almazara premiada de la zona que exporta. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 15,
+          "asunto": "Re: Para después de la campaña",
+          "cuerpo": "Javier:\n\nSolo para que no se pierda entre tanto correo de campaña: en febrero le llamo para ver si le encaja una visita de media hora. Si prefiere otra fecha, dígamela y la apunto.\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unas semanas sobre trazabilidad. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        }
+      ],
+      "prospecto_id": "aceites-impelte",
+      "cadencia": [
+        {
+          "dia": 1,
+          "canal": "llamada",
+          "accion": "Llamada muy corta; si no puede, mensaje de voz"
+        },
+        {
+          "dia": 1,
+          "canal": "email",
+          "accion": "Email 'para después de la campaña' (emails[0])"
+        },
+        {
+          "dia": 15,
+          "canal": "email",
+          "accion": "Recordatorio (emails[1])"
+        },
+        {
+          "dia": 72,
+          "canal": "llamada",
+          "accion": "Llamada en la primera semana de febrero para cerrar visita"
+        }
+      ]
+    },
+    {
+      "id": "pastores-grupo-cooperativo",
+      "empresa": "Pastores Grupo Cooperativo (Oviaragón)",
+      "municipio": "Zaragoza (Mercazaragoza)",
+      "fecha_primer_contacto": "2026-11-25",
+      "interlocutor": "Dirección de servicios técnicos ganaderos o dirección general",
+      "producto_principal": "Ganadex",
+      "productos_secundarios": [
+        "Athenea"
+      ],
+      "estudio": {
+        "resumen": "Grupo cooperativo creado en torno a Oviaragón, la mayor cooperativa de ovino de Aragón, surgida de la unión de Carne Aragón, APA Cinco Villas y la turolense Cotega. Tiene 600 socios ganaderos y 170 trabajadores en unos 400 pueblos. Lidera el Ternasco de Aragón IGP, ha diversificado a quesos y elaborados curados de cordero, y en 2022 facturó 54,7 M€.",
+        "datos_clave": [
+          "600 socios ganaderos, 170 trabajadores, unos 400 pueblos (Cooperativas Agro-alimentarias)",
+          "54,7 M€ de cifra de negocio en 2022",
+          "Recogida de corderos y servicios a socios por todo el territorio",
+          "Planes técnicos por explotación: en 2016 los socios que los aplicaban ganaban de media 18 € más por oveja",
+          "Diversificación: ovino de leche en Perales del Alfambra, quesos y curados de cordero"
+        ],
+        "dolores_probables": [
+          "Medir explotación a explotación si los planes técnicos funcionan",
+          "Logística de recogida de corderos en cientos de pueblos",
+          "Trazabilidad del Ternasco IGP de la granja al punto de venta",
+          "Relevo generacional: atraer a jóvenes ganaderos con herramientas digitales"
+        ],
+        "preguntas_diagnostico": [
+          "¿Cómo miden hoy el resultado de los planes técnicos en cada explotación?",
+          "¿Los técnicos registran sus visitas en una aplicación o en papel?",
+          "¿Cómo planifican las rutas de recogida de corderos?",
+          "En el plan de relevo generacional, ¿qué herramientas digitales tienen los jóvenes ganaderos?"
+        ],
+        "fuentes": [
+          "https://agro-alimentarias.coop/docs_download/francisco-santolaria-reclamamos-un-mayor-apoyo-al-ovino-y-ayudas-concretas-revista-de-cooperativas-agro-alimentarias-n61",
+          "https://www.agronewscastillayleon.com/oviaragon-grupo-pastores-registra-un-incremento-del-10-en-su-cifra-de-negocio-en-2022",
+          "https://www.agronewscastillayleon.com/oviaragon-cierra-con-beneficios-un-ano-que-ha-sido-complicado-para-el-sector-ganadero",
+          "https://www.agronewscastillayleon.com/?p=49424"
+        ]
+      },
+      "llamada": {
+        "apertura": "Buenos días, soy Andrés, de try!, empresa de software del Bajo Aragón. Quería hablar con quien dirige los servicios técnicos a los ganaderos. ¿Me pasa con esa persona o me dice cómo se llama?",
+        "motivo": "Hemos desarrollado Ganadex, una plataforma para que una cooperativa tenga los datos de cada explotación socia y pueda medir si los planes técnicos dan resultado. Sé que en Pastores llevan años trabajando con planes por explotación.",
+        "pregunta_clave": "¿Cómo saben hoy, explotación a explotación, cuánto mejora el margen por oveja un socio que aplica el plan técnico?",
+        "propuesta_valor": "Ganadex junta en un panel los datos de cada socio: censo, partos, corderos entregados y visitas técnicas. Así ven qué explotaciones mejoran con el plan, cuáles necesitan apoyo y pueden demostrar con números el valor de la cooperativa. Y la trazabilidad del ternasco queda conectada de la granja al punto de venta.",
+        "objeciones": {
+          "ya_tenemos_programa": "Lo normal es que ya tengan algo, y no venimos a cambiar lo que funciona. Le pregunto una cosa: cuando necesita el margen por oveja de un socio antes y después del plan técnico, ¿lo saca del programa en un minuto o hay que juntar hojas de cálculo? Si es lo segundo, ahí es donde aportamos, conectando con lo que ya tienen.",
+          "envieme_info": "Se la envío hoy mismo. Para no mandarle un catálogo genérico, ¿me dice en una frase qué le quita más tiempo ahora mismo: medir los planes técnicos, la recogida de corderos o la trazabilidad del ternasco? Así le mando solo lo que le sirve.",
+          "no_es_momento": "Lo entiendo perfectamente, con el cierre de año encima. ¿Le parece que le llame en enero? Le dejo apuntado y no le molesto antes.",
+          "precio": "Depende del tamaño y de lo que se use, y no le voy a dar una cifra a ciegas. Lo que sí hacemos es empezar por un diagnóstico corto, sin coste, y le digo cuánto le ahorraría y cuánto costaría. Si no salen las cuentas, se lo diré yo mismo.",
+          "los_ganaderos_no_usan_apps": "Por eso Ganadex lo usa sobre todo el técnico en la visita, desde el móvil, y el ganadero solo consulta. Y para los jóvenes del plan de relevo puede ser justo lo que buscan."
+        },
+        "cierre": "¿Le parece que les enseñe Ganadex en Zaragoza, una hora, con datos de ejemplo de una explotación de ovino de carne? ¿Mejor la semana del 14 de diciembre o en enero?",
+        "mensaje_voz": "Buenos días, soy Andrés, de try!, empresa de software del Bajo Aragón. Les llamaba por Ganadex, una plataforma para medir explotación a explotación el resultado de los planes técnicos. Les envío un correo y vuelvo a llamar la semana que viene. Mi teléfono es [TELÉFONO]."
+      },
+      "emails": [
+        {
+          "dia": 1,
+          "asunto": "Medir el resultado de los planes técnicos, socio a socio",
+          "cuerpo": "Buenos días:\n\nSoy Andrés, de try!, una empresa de software del Bajo Aragón. Sé que en Pastores llevan años trabajando con planes técnicos por explotación y que han medido su efecto en el margen por oveja.\n\nHemos desarrollado Ganadex, una plataforma de gestión ganadera que permite a una cooperativa:\n- Tener en un panel los datos de cada socio: censo, partos, corderos entregados y visitas técnicas.\n- Ver qué explotaciones mejoran con el plan y cuáles necesitan apoyo.\n- Conectar la trazabilidad del Ternasco de Aragón desde la granja.\n\n¿Podríamos enseñárselo en una hora, en Zaragoza o por videollamada, en diciembre o enero?\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque Pastores es la cooperativa de referencia del ovino en Aragón, el sector para el que hemos creado Ganadex. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 6,
+          "asunto": "Re: Planes técnicos socio a socio",
+          "cuerpo": "Buenos días:\n\nRetomo mi correo con una pregunta: ¿cuánto tardan hoy en saber cuánto ha mejorado el margen por oveja de un socio desde que aplica el plan técnico? Si cuesta, Ganadex lo deja a la vista. ¿Les reservo una hora?\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unos días sobre Ganadex. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        },
+        {
+          "dia": 15,
+          "asunto": "Cierro por ahora",
+          "cuerpo": "Buenos días:\n\nNo insisto más. Si en algún momento quieren ver Ganadex con datos de una explotación de ovino, respondan a este correo y lo preparamos.\n\nUn saludo,\n\nAndrés\ntry! company (Try Business Solutions)\n[TELÉFONO] · [WEB]\n\nLe escribo porque le escribí hace unas semanas sobre Ganadex. Si prefiere no recibir más mensajes de try!, responda «BAJA» y no volveremos a escribirle."
+        }
+      ],
+      "prospecto_id": "pastores-grupo-cooperativo",
+      "cadencia": [
+        {
+          "dia": 1,
+          "canal": "email",
+          "accion": "Email inicial (emails[0])"
+        },
+        {
+          "dia": 1,
+          "canal": "llamada",
+          "accion": "Llamada de presentación (llamada); si no contesta, mensaje de voz"
+        },
+        {
+          "dia": 3,
+          "canal": "llamada",
+          "accion": "Segundo intento de llamada"
+        },
+        {
+          "dia": 6,
+          "canal": "email",
+          "accion": "Email de seguimiento 1"
+        },
+        {
+          "dia": 10,
+          "canal": "llamada",
+          "accion": "Llamada + mensaje de voz"
+        },
+        {
+          "dia": 15,
+          "canal": "email",
+          "accion": "Email de cierre de ciclo; si no hay respuesta, estado 'En pausa' y recordatorio a 90 días"
+        }
+      ]
+    }
+  ]
+}
