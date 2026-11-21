@@ -16,9 +16,13 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "import:sheet": "tsx scripts/import-sheet.ts"
+    "import:sheet": "tsx scripts/import-sheet.ts",
+    "trygestion:backfill": "node scripts/run-typescript.cjs scripts/trygestion-backfill.ts",
+    "trygestion:sync": "node scripts/run-typescript.cjs scripts/trygestion-sync.ts"
   },
-  "prisma": { "seed": "tsx prisma/seed-real.ts" },
+  "prisma": {
+    "seed": "tsx prisma/seed-real.ts"
+  },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
     "@prisma/client": "^6.2.1",
@@ -28,7 +32,8 @@
     "next-auth": "^5.0.0-beta.25",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",

@@ -425,7 +425,8 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     await db.sourceThrottle.deleteMany(); const starts: number[] = []; const ends: number[] = []; let active = 0; let maximum = 0;
     const request = async () => { starts.push(Date.now()); active++; maximum = Math.max(maximum, active); await Promise.resolve(); active--; ends.push(Date.now()); };
     await Promise.all([new DatabaseOverpassGate(db).run(request), new DatabaseOverpassGate(db).run(request)]);
-    expect(maximum).toBe(1); expect(starts[1] - ends[0]).toBeGreaterThanOrEqual(2000);
+    // The pause is measured with PostgreSQL's clock (clock_timestamp); allow a small skew against the JS clock.
+    expect(maximum).toBe(1); expect(starts[1] - ends[0]).toBeGreaterThanOrEqual(1900);
   }, 15_000);
   it('el mock crea N Detectadas sin tareas, las encola y la segunda ejecución crea cero', async () => {
     const profile = await prospectingProfile();

@@ -1,3 +1,4 @@
+import { enqueueCompany } from '../trygestion/outbox';
 import { readFile } from 'node:fs/promises';
 import type { PrismaClient } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -29,16 +30,19 @@ export async function investigateCompany(db: PrismaClient, companyId: string) {
   return db.$transaction(async tx => {
     const latest = await tx.researchReport.aggregate({ where: { companyId }, _max: { version: true } });
     await tx.company.update({ where: { id: companyId }, data: { researchQueuedAt: null } });
-    return tx.researchReport.create({ data: { companyId, version: (latest._max.version ?? 0) + 1, origin: 'AI', summary: report.summary.text, data: json(report), score: { create: { companyId, ...score, breakdown: json(score.breakdown) } } }, include: { score: true } });
+    const saved = await tx.researchReport.create({ data: { companyId, version: (latest._max.version ?? 0) + 1, origin: 'AI', summary: report.summary.text, data: json(report), score: { create: { companyId, ...score, breakdown: json(score.breakdown) } } }, include: { score: true } });
+    await enqueueCompany(tx, companyId, saved.score?.id);
+    return saved;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function applySuggestedPriority(db: PrismaClient, companyId: string, userId: string) {
   const score = await db.score.findFirstOrThrow({ where: { companyId }, orderBy: { createdAt: 'desc' } });
-  await db.$transaction([
-    db.company.update({ where: { id: companyId }, data: { priority: score.suggestedPriority } }),
-    db.auditLog.create({ data: { userId, entityType: 'Company', entityId: companyId, action: 'APPLY_SUGGESTED_PRIORITY', metadata: { scoreId: score.id, priority: score.suggestedPriority } } }),
-  ]);
+  await db.$transaction(async tx => {
+    await tx.company.update({ where: { id: companyId }, data: { priority: score.suggestedPriority } });
+    await tx.auditLog.create({ data: { userId, entityType: 'Company', entityId: companyId, action: 'APPLY_SUGGESTED_PRIORITY', metadata: { scoreId: score.id, priority: score.suggestedPriority } } });
+    await enqueueCompany(tx, companyId, score.id);
+  });
 }
 
 export async function generateCompanyScript(db: PrismaClient, companyId: string, requestedProduct?: string) {

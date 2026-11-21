@@ -23,6 +23,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   return <main className="mx-auto max-w-5xl space-y-6 p-5">
     <h1 className="text-2xl font-bold">{company.name}</h1>
     <p>Revisión: {company.acceptanceStatus === 'PENDING' ? 'Pendiente de aceptar' : company.acceptanceStatus === 'DISCARDED' ? 'Descartada' : 'Lista para trabajar'}</p>
+    {company.trygestionEmpresaId && <p role="status">En trygestión · {company.trygestionEmpresaId}</p>}
     <PlacesView companyId={company.id} country={company.country}/>
     {searchParams.error && <p role="alert">No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.</p>}
     {searchParams.done && <p role="status">Operación completada.</p>}

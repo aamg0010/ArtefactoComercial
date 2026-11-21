@@ -1,3 +1,4 @@
+import { enqueueCompany, enqueueContact, enqueuePipeline } from '../trygestion/outbox';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { Prisma, type PrismaClient } from '@prisma/client';
@@ -96,6 +97,8 @@ export async function acceptCompany(db: PrismaClient, companyId: string, raw: un
     }
     await tx.companyEvidence.create({ data: { companyId: targetId, kind: ownWeb ? 'WEB_OWN' : 'MANUAL', confirmedBy: userId, data: JSON.parse(JSON.stringify({ confirmed: values, provenance })) as Prisma.InputJsonValue } });
     await tx.auditLog.create({ data: { userId, entityType: 'Company', entityId: targetId, action: 'ACCEPT_COMPANY' } });
+    await enqueueCompany(tx, targetId);
+    for (const contact of await tx.contact.findMany({ where: { companyId: targetId } })) await enqueueContact(tx, contact.id);
     return targetId;
   }, { timeout: 15_000 });
 }
@@ -103,6 +106,7 @@ export async function acceptCompany(db: PrismaClient, companyId: string, raw: un
 export async function discardCompany(db: PrismaClient, companyId: string, userId: string) {
   await db.$transaction(async tx => {
     const changed = await tx.company.updateMany({ where: { id: companyId, acceptanceStatus: 'PENDING' }, data: { acceptanceStatus: 'DISCARDED', pipelineStage: 'LOST', researchQueuedAt: null } });
+    if (changed.count) await enqueuePipeline(tx, companyId, 'LOST', new Date().toISOString(), 'Descartada desde try! Comercial');
     if (changed.count) await tx.auditLog.create({ data: { userId, entityType: 'Company', entityId: companyId, action: 'DISCARD_COMPANY' } });
   });
 }
