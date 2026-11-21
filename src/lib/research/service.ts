@@ -27,6 +27,7 @@ export async function investigateCompany(db: PrismaClient, companyId: string) {
   const score = calculateScore(report, { comarca: company.comarca, hasContact: hasDirectContact(company) || company.contacts.some(hasDirectContact) }, weights);
   return db.$transaction(async tx => {
     const latest = await tx.researchReport.aggregate({ where: { companyId }, _max: { version: true } });
+    await tx.company.update({ where: { id: companyId }, data: { researchQueuedAt: null } });
     return tx.researchReport.create({ data: { companyId, version: (latest._max.version ?? 0) + 1, origin: 'AI', summary: report.summary.text, data: json(report), score: { create: { companyId, ...score, breakdown: json(score.breakdown) } } }, include: { score: true } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

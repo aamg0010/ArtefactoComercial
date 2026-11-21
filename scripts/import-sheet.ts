@@ -18,10 +18,13 @@ async function main() {
     const normalizedName = normalizeText(row.empresa || row.nombre || '');
     if (!normalizedName) throw new Error('Cada fila debe incluir id o empresa/nombre.');
     const country = row.pais === 'Colombia' || row.pais === 'CO' ? Country.CO : Country.ES;
-    const where = sourceId ? { sourceId } : { normalizedName_country: { normalizedName, country } };
+    const city = row.municipio || row.ciudad || null;
+    const named = sourceId ? [] : await prisma.company.findMany({ where: { normalizedName, country } });
+    if (!sourceId && !city && named.length > 1) throw new Error('Nombre ambiguo: indica id o municipio para importar una empresa homónima.');
+    const existing = sourceId ? await prisma.company.findUnique({ where: { sourceId } }) : named.find(item => !city || normalizeText(item.city ?? '') === normalizeText(city));
     const name = row.empresa || row.nombre;
     const data = { name, priority: row.prioridad || null, pipelineStage: stageMap[row.estado] ?? 'DETECTED', sector: row.sector || null, city: row.municipio || row.ciudad || null, comarca: row.comarca || null, region: row.provincia || row.region || null, nextAction: row.proxima_accion || null, nextActionAt: parseDate(row.fecha_proxima_accion || row.fecha), sourceDetail: 'Importación de hoja compartida' };
-    const company = await prisma.company.upsert({ where, update: data, create: { ...data, sourceId, normalizedName, country, source: ContactSource.CSV } });
+    const company = existing ? await prisma.company.update({ where: { id: existing.id }, data }) : await prisma.company.create({ data: { ...data, sourceId, normalizedName, country, source: ContactSource.CSV } });
     const rawContact = row.contacto_corporativo || row.contacto || '';
     const website = companyWebsiteCandidate([row.web, row.website, rawContact].filter(Boolean).join(' '));
     if (website) await prisma.company.updateMany({ where: { id: company.id, OR: [{ website: null }, { website: '' }] }, data: { website, normalizedDomain: normalizeDomain(website) } });

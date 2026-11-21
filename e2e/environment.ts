@@ -21,4 +21,5 @@ export const e2eEnvironment = {
   LLM_MODEL: '',
   ANTHROPIC_API_KEY: '',
   OPENAI_API_KEY: '',
+  GOOGLE_PLACES_API_KEY: '',
 };

@@ -1,4 +1,4 @@
-# try! Comercial — Fases 1, 2 y 3
+# try! Comercial — Fases 1 a 4
 
 Aplicación interna de gestión comercial de try! company: autenticación, catálogo inicial, empresas/contactos, importación CSV, cadencias y tareas, registro de resultados, Mi día, pipeline kanban e investigación/puntuación/guiones con IA o proveedor simulado.
 
@@ -70,7 +70,7 @@ La URL predeterminada es `postgresql://try:try@localhost:54329/try_comercial_e2e
 
 La prueba usa Chromium y un solo worker: login comercial → guion de La Calandina en Mi día del 23/11/2026 → Reunión agendada en Caspe → desaparición de sus pendientes → columna Reunión del kanban → redirección a login sin sesión. No envía emails. La caché del navegador se guarda en `.cache/ms-playwright/` (o en `PLAYWRIGHT_BROWSERS_PATH` si se configura). Si falla, conserva traza y captura en `test-results/`; el informe HTML está en `playwright-report/` (`npx playwright show-report`). Esos directorios y `e2e-output.log` están ignorados por Git.
 
-No hay cron aplicable todavía: el rastreo diario se incorpora en la Fase 4.
+El rastreo diario de Fase 4 se programa explícitamente; instalar la aplicación no crea ninguna tarea de Windows.
 
 ## Fase 3: investigación, puntuación y guiones
 
@@ -114,12 +114,70 @@ $env:LLM_PROVIDER = 'mock'
 npm run research:batch
 ```
 
-El lote procesa como máximo tres empresas simultáneamente y espera un segundo entre tandas. Sólo selecciona empresas sin ficha con origen `AI`; al relanzar omite los éxitos y reintenta los fallos. No incluye cron ni rastreo automático (Fase 4). No se ha ejecutado contra la base de trabajo.
+El lote procesa como máximo tres empresas simultáneamente y espera un segundo entre tandas. Sólo selecciona empresas sin ficha con origen `AI`; al relanzar omite los éxitos y reintenta los fallos. El diario de Fase 4 limita además la investigación automática a nuevas empresas no ficticias de la cola. No se ha ejecutado contra la base de trabajo.
 
 La migración `20261121140000_phase3_ai` se genera con `prisma migrate diff` contra una base de sombra, sin BOM. Aplícala con `prisma migrate deploy` apuntando explícitamente a la base deseada antes de ejecutar el seed. Vitest mantiene los tests de Fase 2 y añade puntuación, evidencias, proveedor simulado/transportes, lote e integración de investigación → puntuación → borrador → aprobación/supresión. `npm run test:e2e` mantiene el flujo de Caspe y añade Pretersa-Prenavisa → investigación → puntuación → guion → aprobación → tareas en Mi día.
+
+## Fase 4: rastreo y perfiles
+
+En **Rastreo** (`/rastreo`), administración puede crear/editar perfiles y activarlos o desactivarlos; administración y comerciales pueden ejecutar perfiles activos. Dirección sólo puede consultar. El seed añade tres ejemplos **inactivos** para agroalimentaria del Bajo Aragón, ganadería de Teruel/Zaragoza y pymes de servicios de Alcañiz. Se conservan las modificaciones posteriores a los perfiles.
+
+Cada perfil define país, provincias, comarcas, municipios, palabras clave/sector, CNAE opcional, producto, fuente y límite de 1–200 candidatos por ejecución. Las consultas combinan palabra clave, municipio y provincia; Google se filtra por el país y localidades seleccionadas. Comarca y CNAE son metadatos del perfil: Places no proporciona un filtro CNAE. El presupuesto evita búsquedas ilimitadas: hasta 20 consultas por perfil y `GOOGLE_PLACES_MAX_PAGES` páginas por consulta (opcional, por defecto 3, rango 1–10), parando al alcanzar el máximo de resultados.
+
+### Fuentes
+
+- `google-places`: API New `POST https://places.googleapis.com/v1/places:searchText`, field mask explícita (identificador, datos corporativos, atribuciones y token), paginación, timeout de 15 s y dos reintentos ante red/429/5xx con esperas de 1 y 2 s. Un error no cambia a datos simulados. No se solicitan personas, emails, reseñas ni sus autores.
+- `mock`: sin clave de Google, las fuentes Google/mock devuelven empresas deterministas con `[SIMULADA]`, `fictional=true` y webs `.example.invalid`. No usa red ni teléfonos reales. Con clave, incluso un perfil configurado como mock selecciona Google real; nunca se mezclan resultados reales y simulados.
+- `csv`: pega un CSV propio en el perfil. Reutiliza `parseCompanyCsv` (también `empresa,provincia,municipio`), pero conserva sólo los campos corporativos; descarta columnas de contactos personales y emails. `telefono` debe ser el teléfono corporativo. En ejecuciones posteriores reutiliza esa selección corporativa, no el CSV original. Los CSV no tienen una URL pública inventada.
+- `apollo`, `einforma`, `rues`, `linkedin-export`: stubs con interfaz/TODO, sin red; registran `SOURCE_NOT_IMPLEMENTED` en el historial. LinkedIn queda limitado a exportación manual de empresas, sin scraping de personas.
+
+Para activar Google, habilita Places API (New)/facturación en su proyecto, limita la clave a esa API y configura `GOOGLE_PLACES_API_KEY` en el entorno del servidor; no se necesita cambiar código. Las pruebas fuerzan clave vacía y simulan las respuestas HTTP del adaptador real.
+
+**Retención de Google:** el `place_id` (`CompanySource.sourceRef`) se conserva; el resto de contenido de Places **no debe cachearse indefinidamente**, ni se presume permitido guardarlo durante 30 días. Por eso el CRM persiste sólo el identificador y metadatos propios del perfil. El nombre real, dirección, web y teléfono se consultan en vivo, sin caché, al abrir la ficha; web/teléfono sirven para contactar a la empresa tras verificar su uso corporativo. Se muestran logo y atribuciones. Consulta las [políticas de Places](https://developers.google.com/maps/documentation/places/web-service/policies), incluidas las condiciones EEE. Antes de producción deben publicarse los términos/privacidad exigidos por Google.
+
+Las altas de Google muestran inicialmente un nombre local de referencia con el perfil y el identificador, sin copiar nombres/direcciones/teléfonos de Places al catálogo ni a los logs. Su información debe verificarse de manera independiente para incorporarla como dato propio; tampoco se envía contenido de Google al proveedor de IA. No se ha probado con una clave real todavía. La integración técnica sigue la [documentación oficial de Text Search](https://developers.google.com/maps/documentation/places/web-service/text-search).
+
+### Ejecución, exclusión y cola
+
+`runProspecting(profileId?)` ejecuta sólo perfiles activos. Registra un `SourceRun` con inicio/fin, fuente efectiva, consultas propias, candidatos, nuevas, duplicadas, suprimidas, errores y coincidencias por identificador (sin respuestas completas ni claves). Deduplica por NIF, dominio sin `www`, referencia de la misma fuente o nombre sin forma jurídica + municipio + país. La sección local de deduplicación/alta se serializa con un advisory lock transaccional de PostgreSQL para evitar duplicados entre ejecuciones concurrentes; no mantiene un bloqueo durante las llamadas de red.
+
+Las altas quedan en Detectada, sin prioridad ni tareas, con fecha de detección y contacto genérico corporativo pendiente de verificar/base legal pendiente de revisar. Se crea la oportunidad del producto objetivo. La exclusión consulta empresa, nombre/municipio, dominio y teléfono normalizado. Una marca de exclusión se conserva al borrar la empresa; sus referencias de fuente quedan bloqueadas para no recrearla. No se realizan envíos ni llamadas.
+
+`researchQueuedAt` es la cola persistente: investigar con éxito la vacía. El diario sólo procesa nuevas empresas no ficticias en cola y sin ficha de IA; con IA simulada difiere la investigación. `research:batch` manual mantiene su comportamiento de investigar todas las empresas sin ficha. Repetir el rastreo no duplica compañías ni tareas.
+
+```powershell
+# Verificación local exclusivamente contra la base desechable:
+$env:DATABASE_URL = 'postgresql://try:try@localhost:54329/try_comercial_test?schema=public'
+$env:LLM_PROVIDER = 'mock'
+$env:GOOGLE_PLACES_API_KEY = ''
+npm run prospect:daily
+```
+
+### Programar a las 06:30 en Windows
+
+Comprueba primero la base del entorno que ejecutará el proceso y los perfiles activos. El proceso debe tener Node/npm disponibles, acceso a PostgreSQL y permisos de lectura sobre la configuración local. La hora corresponde a la zona local de Windows; los cambios de horario los administra el Programador.
+
+Opción recomendada (archivo preparado, **no ejecutado durante esta entrega**):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\register-daily-task.ps1
+```
+
+El script registra `try-comercial-diario` con directorio de trabajo correcto, ejecución diaria a las 06:30 e ignorando solapamientos. Alternativa equivalente mediante `schtasks`, adaptando la ruta del repositorio:
+
+```powershell
+schtasks /Create /TN 'try-comercial-diario' /SC DAILY /ST 06:30 /TR 'cmd.exe /d /c "cd /d C:\Users\Nitropc\Projects\ArtefactoComercial && npm run prospect:daily"' /F
+schtasks /Query /TN 'try-comercial-diario'
+# Para desregistrarla:
+schtasks /Delete /TN 'try-comercial-diario' /F
+```
+
+El script diario ejecuta el rastreo y, sólo con IA real, la investigación de la cola. Devuelve código distinto de cero si hay errores; revisa `SourceRun` para el detalle saneado. No se ha registrado ni ejecutado una tarea programada en esta máquina.
+
+La migración `20261121160000_phase4_prospecting` se genera con `migrate diff`, sin BOM. Incluye `SearchProfile`, `SourceRun`, identidades de fuente y metadatos de detección/cola; añade en SQL los checks y el trigger de conservación de exclusiones. El índice único de nombre/país pasa a incluir municipio, para permitir empresas homónimas en localidades distintas. Aplica `migrate deploy` y ejecuta el seed en la base elegida antes de usar `/rastreo`.
 
 ## Decisiones y pendientes
 
 - Auth.js con credenciales locales de desarrollo y Google opcional; PostgreSQL + Prisma como almacenamiento principal.
 - Los datos de `data/prospectos.json` son la fuente de verdad. El seed preserva sus datos sin completarlos ni corregirlos y guarda los cinco guiones como versión 1, autor `seed`.
-- Pendientes: proveedor PostgreSQL desplegado, OAuth Google, adaptadores de fuentes, cron/cola, IA, email/calendario y controles completos de RGPD/habeas data de la Fase 6.
+- Pendientes: validación con credenciales reales de Google/IA, despliegue PostgreSQL/OAuth, adaptadores comerciales hoy stub, integraciones email/calendario y controles completos de Fase 6. La programación diaria local y la cola persistente ya están implementadas.

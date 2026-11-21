@@ -5,6 +5,7 @@ import { researchShape } from '@/lib/research/schema';
 import { ScriptView } from '../../mi-dia/script-view';
 import type { GeneratedScript } from '@/lib/research/scripts';
 import { isVerifiedDirectContact } from '@/lib/company-contact';
+import { PlacesView } from './places-view';
 
 export const dynamic = 'force-dynamic';
 const factorLabels: Record<string, string> = { sector: 'Encaje de sector', size: 'Tamaño', intent: 'Intención', contact: 'Accesibilidad del contacto', proximity: 'Proximidad geográfica', crossSell: 'Venta cruzada' };
@@ -20,6 +21,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><button name="action" value={action}>{label}</button></form>;
   return <main className="mx-auto max-w-5xl space-y-6 p-5">
     <h1 className="text-2xl font-bold">{company.name}</h1>
+    <PlacesView companyId={company.id} country={company.country}/>
     {searchParams.error && <p role="alert">No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.</p>}
     {searchParams.done && <p role="status">Operación completada.</p>}
     <section aria-label="Datos de empresa" className="rounded bg-white p-4">

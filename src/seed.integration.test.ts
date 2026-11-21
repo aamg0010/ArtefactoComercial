@@ -10,6 +10,9 @@ import { setCompanyCadenceStatus } from './lib/cadence';
 import { isSafeTestDatabase } from './lib/test-database';
 import { completeTask } from './lib/tasks';
 import prospects from '../data/prospectos.json';
+import { runProspecting } from './lib/prospecting/service';
+import { sourceAdapter } from './lib/sources';
+import type { CandidateCompany, SourceAdapter } from './lib/sources/types';
 
 const run = promisify(execFile);
 const url = process.env.TEST_DATABASE_URL;
@@ -41,13 +44,18 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
   const cadenceIds: string[] = [];
   const taskIds: string[] = [];
   const companyIds: string[] = [];
+  const profileIds: string[] = [];
   let tempDirectory: string;
   let caspeStage: string;
 
   beforeAll(async () => {
     vi.stubEnv('LLM_PROVIDER', 'mock');
+    vi.stubEnv('GOOGLE_PLACES_API_KEY', '');
     // This suite owns only the explicitly validated disposable database.
     await db.company.deleteMany();
+    await db.companySource.deleteMany();
+    await db.sourceRun.deleteMany();
+    await db.searchProfile.deleteMany();
     await db.cadence.deleteMany();
     await db.suppressionList.deleteMany();
     await seed();
@@ -56,6 +64,12 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
   }, 60_000);
 
   afterEach(async () => {
+    if (profileIds.length) {
+      await db.company.deleteMany({ where: { discoveryRun: { profileId: { in: profileIds } } } });
+      await db.searchProfile.deleteMany({ where: { id: { in: profileIds.splice(0) } } });
+      await db.companySource.deleteMany();
+      await db.suppressionList.deleteMany({ where: { reason: 'prospecting-test' } });
+    }
     await db.task.deleteMany({ where: { id: { in: taskIds.splice(0) } } });
     await db.companyCadence.deleteMany({ where: { cadenceId: { in: cadenceIds } } });
     await db.cadence.deleteMany({ where: { id: { in: cadenceIds.splice(0) } } });
@@ -122,6 +136,7 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     expect(await db.company.count()).toBe(56);
     expect(await db.script.count()).toBe(5);
     expect(await db.opportunity.count()).toBe(121);
+    expect(await db.searchProfile.count({ where: { active: false } })).toBe(3);
   });
 
   it('el seed extrae las seis webs y no verifica contactos que sólo tienen web', async () => {
@@ -161,6 +176,18 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
       if (id === 'limabril-s-l' || id === 'pastores-grupo-cooperativo') expect(company.contacts[0]).toMatchObject({ email: null, phone: null, verified: false });
     }
     expect(await db.company.findUniqueOrThrow({ where: { id: existing.id } })).toMatchObject({ website: 'https://elegida.example.test', normalizedDomain: 'elegida.example.test' });
+  }, 30_000);
+
+  it('import:sheet casa el municipio sin acentos ni mayúsculas tras permitir homónimas', async () => {
+    const company = await db.company.create({ data: { name: 'Importación homónima', normalizedName: 'importacion homonima', country: 'ES', city: 'Alcañiz' } });
+    const other = await db.company.create({ data: { name: 'Importación homónima', normalizedName: 'importacion homonima', country: 'ES', city: 'Caspe' } });
+    companyIds.push(company.id, other.id);
+    const file = join(tempDirectory, 'city.csv');
+    await writeFile(file, 'empresa,municipio,estado\nImportacion homonima,ALCANIZ,Contactado\n');
+    await runTypescript('scripts/import-sheet.ts', [file]);
+    expect((await db.company.findUniqueOrThrow({ where: { id: company.id } })).pipelineStage).toBe('CONTACTING');
+    expect((await db.company.findUniqueOrThrow({ where: { id: other.id } })).pipelineStage).toBe('DETECTED');
+    expect(await db.company.count({ where: { normalizedName: 'importacion homonima' } })).toBe(2);
   }, 30_000);
 
   it('importa un cambio de estado desde CSV con id', async () => {
@@ -302,6 +329,69 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     await approveCompanyScript(db, draft.id);
     expect(await db.task.count({ where: { companyId: company.id } })).toBe(0);
     expect((await db.companyCadence.findFirstOrThrow({ where: { companyId: company.id } })).status).toBe('PAUSED');
+  });
+
+  async function prospectingProfile(maxResults = 3) {
+    const profile = await db.searchProfile.create({ data: { name: 'Perfil de pruebas', active: true, country: 'ES', provinces: ['Teruel'], comarcas: ['Bajo Aragón'], municipalities: ['Alcañiz'], keywords: ['proveedor de pruebas'], cnaeCodes: [], productLine: 'Athenea', source: 'google-places', maxResults } });
+    profileIds.push(profile.id); return profile;
+  }
+  it('el mock crea N Detectadas sin tareas, las encola y la segunda ejecución crea cero', async () => {
+    const profile = await prospectingProfile();
+    const [first] = await runProspecting(profile.id, { db });
+    expect(first).toMatchObject({ source: 'mock', created: 3, errors: 0, duplicates: 0, status: 'SUCCESS' });
+    const companies = await db.company.findMany({ where: { discoveryRunId: first.id }, include: { tasks: true, contacts: true } });
+    expect(companies).toHaveLength(3);
+    for (const company of companies) {
+      expect(company.name).toContain('[SIMULADA]'); expect(company.fictional).toBe(true);
+      expect(company.pipelineStage).toBe('DETECTED'); expect(company.priority).toBeNull();
+      expect(company.detectedAt).not.toBeNull(); expect(company.researchQueuedAt).not.toBeNull(); expect(company.tasks).toHaveLength(0);
+      expect(company.contacts[0]).toMatchObject({ fullName: 'Contacto general', legalBasis: 'LEGITIMATE_INTEREST', email: null, verified: false });
+    }
+    const [second] = await runProspecting(profile.id, { db });
+    expect(second).toMatchObject({ created: 0, duplicates: 3, errors: 0 });
+    expect(await db.company.count({ where: { discoveryRunId: first.id } })).toBe(3);
+  });
+  it('una empresa excluida y borrada no se recrea al volver a rastrear', async () => {
+    const profile = await prospectingProfile(1);
+    const [first] = await runProspecting(profile.id, { db });
+    const company = await db.company.findFirstOrThrow({ where: { discoveryRunId: first.id } });
+    await db.suppressionList.create({ data: { companyId: company.id, reason: 'prospecting-test' } });
+    await db.company.delete({ where: { id: company.id } });
+    expect(await db.suppressionList.findFirst({ where: { reason: 'prospecting-test', companyId: null, companyName: company.name } })).not.toBeNull();
+    const [second] = await runProspecting(profile.id, { db });
+    expect(second).toMatchObject({ created: 0, suppressed: 1, errors: 0 });
+  });
+  it.each(['domain', 'phone'] as const)('una exclusión por %s impide crear una empresa nueva', async identifier => {
+    const profile = await prospectingProfile(1);
+    const [candidate] = await sourceAdapter('mock').search(profile);
+    candidate.corporatePhone = '976632132';
+    await db.suppressionList.create({ data: { reason: 'prospecting-test', ...(identifier === 'domain' ? { domain: new URL(candidate.website!).hostname } : { phone: '+34 976 632 132' }) } });
+    const adapter: SourceAdapter = { id: 'mock', search: async () => [candidate] };
+    const [run] = await runProspecting(profile.id, { db, adapter });
+    expect(run).toMatchObject({ created: 0, suppressed: 1, errors: 0 });
+  });
+  it('La Calandina ya sembrada se registra como duplicada sin crear empresa', async () => {
+    const profile = await prospectingProfile(1);
+    const [candidate] = await sourceAdapter('mock').search(profile);
+    Object.assign(candidate, { name: 'LA CALANDINA Sociedad Cooperativa', city: 'Calanda', website: null });
+    const before = await db.company.count();
+    const [run] = await runProspecting(profile.id, { db, adapter: { id: 'mock', search: async () => [candidate] } });
+    expect(run).toMatchObject({ created: 0, duplicates: 1, errors: 0 });
+    expect(await db.company.count()).toBe(before); expect(JSON.stringify(run.matches)).toContain('NAME_CITY');
+  });
+  it('Google conserva sólo place_id y metadatos propios, sin cachear nombres, webs o teléfonos', async () => {
+    const profile = await prospectingProfile(1);
+    const candidate: CandidateCompany = { name: 'Nombre de Google no persistible', city: 'Alcañiz', province: 'Teruel', country: 'ES', address: 'Dirección no persistible', website: 'https://google-result.example.test', corporatePhone: '+34999999999', category: 'store', source: 'google-places', sourceRef: 'place-id-test', sourceUrl: 'https://www.google.com/maps', simulated: false };
+    const [run] = await runProspecting(profile.id, { db, adapter: { id: 'google-places', search: async () => [candidate] } });
+    expect(run).toMatchObject({ created: 1, errors: 0 });
+    const company = await db.company.findFirstOrThrow({ where: { discoveryRunId: run.id }, include: { sourceIdentities: true, contacts: true } });
+    expect(company.website).toBeNull(); expect(company.phone).toBeNull(); expect(company.address).toBeNull(); expect(company.contacts[0].phone).toBeNull();
+    expect(company.name).not.toBe(candidate.name); expect(company.sourceIdentities[0].sourceRef).toBe('place-id-test');
+    expect(JSON.stringify(run)).not.toContain(candidate.name); expect(JSON.stringify(run)).not.toContain(candidate.website!);
+  });
+  it('un perfil inactivo no ejecuta adaptadores', async () => {
+    const profile = await prospectingProfile(1); await db.searchProfile.update({ where: { id: profile.id }, data: { active: false } });
+    const search = vi.fn(); expect(await runProspecting(profile.id, { db, adapter: { id: 'mock', search } })).toEqual([]); expect(search).not.toHaveBeenCalled();
   });
 
   it('las empresas suprimidas con y sin guion no reciben tareas tras el seed', async () => {
