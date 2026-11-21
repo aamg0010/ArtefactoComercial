@@ -57,6 +57,10 @@ enum CompanyCadenceStatus {
   PAUSED
   FINISHED
 }
+enum ScriptStatus {
+  BORRADOR
+  APPROVED
+}
 model User {
   id String @id @default(cuid())
   name String?
@@ -134,6 +138,8 @@ model Company {
   activities Activity[]
   cadences CompanyCadence[]
   suppressions SuppressionList[]
+  scores Score[]
+  aiRuns AiRun[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([normalizedName, country])
@@ -173,9 +179,13 @@ model ResearchReport {
   summary String?
   sourceUrl String?
   data Json?
+  version Int @default(1)
+  origin String @default("SEED")
+  score Score?
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@unique([companyId, version])
 }
 model Opportunity {
   id String @id @default(cuid())
@@ -192,6 +202,9 @@ model Script {
   version Int @default(1)
   author String
   content Json
+  status ScriptStatus @default(APPROVED)
+  approvedAt DateTime?
+  approvedBy String?
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   tasks Task[]
   companyCadences CompanyCadence[]
@@ -287,4 +300,50 @@ model SuppressionList {
   createdAt DateTime @default(now())
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   @@index([companyId])
+}
+
+model AiRun {
+  id String @id @default(cuid())
+  companyId String?
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  provider String
+  model String
+  purpose String
+  durationMs Int
+  inputTokens Int?
+  outputTokens Int?
+  success Boolean
+  error String?
+  createdAt DateTime @default(now())
+  @@index([companyId, createdAt])
+}
+
+model ScoringWeights {
+  id String @id @default("default")
+  sector Int @default(25)
+  size Int @default(15)
+  intent Int @default(20)
+  contact Int @default(15)
+  proximity Int @default(15)
+  crossSell Int @default(10)
+  updatedAt DateTime @updatedAt
+}
+
+model Score {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  researchReportId String @unique
+  researchReport ResearchReport @relation(fields: [researchReportId], references: [id], onDelete: Cascade)
+  total Int
+  suggestedPriority String
+  breakdown Json
+  createdAt DateTime @default(now())
+}
+
+model Template {
+  id String @id @default(cuid())
+  name String @unique
+  content Json
+  updatedAt DateTime @updatedAt
 }
