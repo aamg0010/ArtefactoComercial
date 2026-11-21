@@ -3,5 +3,5 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 OUT=${1:-try-comercial.tgz}
-git archive --format=tar HEAD | gzip > "$OUT"
+git -c core.autocrlf=false archive --format=tar HEAD | gzip > "$OUT"
 echo "$OUT ($(du -h "$OUT" | cut -f1)) desde $(git rev-parse --short HEAD)"
