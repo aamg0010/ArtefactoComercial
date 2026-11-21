@@ -1,6 +1,6 @@
-# try! Comercial — Fase 1
+# try! Comercial — Fases 1 y 2
 
-Base de la aplicación interna de gestión comercial de try! company. Esta fase incluye autenticación, modelo de datos, catálogo inicial, CRUD de empresas/contactos e importación CSV deduplicada.
+Aplicación interna de gestión comercial de try! company: autenticación, catálogo inicial, empresas/contactos, importación CSV, cadencias y tareas, registro de resultados, Mi día y pipeline kanban.
 
 ## Requisitos e instalación
 
@@ -51,7 +51,26 @@ node -e "require('child_process').spawnSync('npx.cmd', ['prisma', 'migrate', 'de
 npm test -- --reporter=verbose > test-output.log 2>&1
 ```
 
-No hay cron aplicable todavía: el rastreo diario se incorpora en la Fase 4. Por ello tampoco hay tareas, cadencias, lista de exclusión ni envíos que verificar en esta fase.
+## Prueba E2E de Fase 2
+
+Con el PostgreSQL del proyecto accesible en `localhost:54329` (usuario y contraseña locales `try`), ejecuta:
+
+```powershell
+# Sólo es necesario instalar Chromium la primera vez:
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.cache/ms-playwright"
+npx playwright install chromium
+npm run test:e2e > e2e-output.log 2>&1
+```
+
+`test:e2e` crea `try_comercial_e2e` si falta, aplica `migrate deploy`, limpia sus empresas, tareas, actividades, cadencias y supresiones y ejecuta `prisma/seed-real.ts`. Después Playwright compila la aplicación y la sirve en `http://localhost:3100`, con credenciales y configuración de Auth.js exclusivas de prueba. El puerto 3100 debe estar libre: no se reutiliza ningún servidor existente.
+
+El `webServer` ejecuta `next build` y después `next start -p 3100`. Un lanzador registra el PID del servidor de esta ejecución para cerrarlo al terminar, también en Windows restringido sin permisos para `taskkill /T`.
+
+La URL predeterminada es `postgresql://try:try@localhost:54329/try_comercial_e2e?schema=public`. Se puede configurar mediante `E2E_DATABASE_URL`, pero debe terminar en `_e2e` y ser distinta de `DATABASE_URL`, incluso si sólo cambian los parámetros de conexión. La protección se valida antes de crear, migrar o borrar datos. Las pruebas de integración usan exclusivamente `try_comercial_test`; E2E usa exclusivamente `try_comercial_e2e`.
+
+La prueba usa Chromium y un solo worker: login comercial → guion de La Calandina en Mi día del 23/11/2026 → Reunión agendada en Caspe → desaparición de sus pendientes → columna Reunión del kanban → redirección a login sin sesión. No envía emails. La caché del navegador se guarda en `.cache/ms-playwright/` (o en `PLAYWRIGHT_BROWSERS_PATH` si se configura). Si falla, conserva traza y captura en `test-results/`; el informe HTML está en `playwright-report/` (`npx playwright show-report`). Esos directorios y `e2e-output.log` están ignorados por Git.
+
+No hay cron aplicable todavía: el rastreo diario se incorpora en la Fase 4.
 
 ## Decisiones y pendientes
 

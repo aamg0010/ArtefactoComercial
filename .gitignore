@@ -1,8 +1,11 @@
 node_modules
 .next
 .env
-playwright-report
-test-results
+playwright-report/
+test-results/
+e2e-output.log
+.cache/ms-playwright/
+.cache/e2e-server-*.json
 generated
 tsconfig.tsbuildinfo
 test-output.log
