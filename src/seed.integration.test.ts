@@ -4,7 +4,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { PrismaClient } from '@prisma/client';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { investigateCompany, generateCompanyScript, approveCompanyScript, applySuggestedPriority } from './lib/research/service';
 import { setCompanyCadenceStatus } from './lib/cadence';
 import { isSafeTestDatabase } from './lib/test-database';
 import { completeTask } from './lib/tasks';
@@ -43,6 +44,7 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
   let caspeStage: string;
 
   beforeAll(async () => {
+    vi.stubEnv('LLM_PROVIDER', 'mock');
     // This suite owns only the explicitly validated disposable database.
     await db.company.deleteMany();
     await db.cadence.deleteMany();
@@ -63,6 +65,7 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
   });
 
   afterAll(async () => {
+    vi.unstubAllEnvs();
     await db.$disconnect();
     if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true });
   });
@@ -213,6 +216,50 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     await db.company.delete({ where: { id: company.id } });
     expect(await db.task.findUnique({ where: { id: task.id } })).toBeNull();
     expect(await db.activity.count({ where: { companyId: company.id } })).toBe(0);
+  });
+
+  it('investiga y puntúa sin cambiar prioridad, versiona y aprueba un guion sin duplicar tareas', async () => {
+    const company = await db.company.create({ data: { name: 'Empresa de pruebas', normalizedName: randomUUID(), country: 'ES', sector: 'Industria', comarca: 'Bajo Aragón', priority: 'C', nextActionAt: new Date('2026-11-23T00:00:00Z') } });
+    companyIds.push(company.id);
+    const first = await investigateCompany(db, company.id);
+    const second = await investigateCompany(db, company.id);
+    expect([first.version, second.version]).toEqual([1, 2]);
+    expect(await db.researchReport.count({ where: { companyId: company.id } })).toBe(2);
+    expect(first.score?.total).toBeGreaterThanOrEqual(0); expect(first.score?.total).toBeLessThanOrEqual(100);
+    expect((await db.company.findUniqueOrThrow({ where: { id: company.id } })).priority).toBe('C');
+    const actor = await db.user.findUniqueOrThrow({ where: { email: 'comercial@try.company' } });
+    await applySuggestedPriority(db, company.id, actor.id);
+    expect((await db.company.findUniqueOrThrow({ where: { id: company.id } })).priority).toBe(second.score!.suggestedPriority);
+    const draft = await generateCompanyScript(db, company.id);
+    expect(draft).toMatchObject({ author: 'IA', status: 'BORRADOR', version: 1 });
+    expect(await db.task.count({ where: { companyId: company.id } })).toBe(0);
+    expect(await db.companyCadence.count({ where: { companyId: company.id } })).toBe(0);
+    await approveCompanyScript(db, draft.id, actor.id);
+    expect(await db.task.count({ where: { scriptId: draft.id, assigneeId: actor.id } })).toBe(6);
+    expect(await db.task.count({ where: { scriptId: draft.id, dueAt: new Date('2026-11-23T00:00:00Z') } })).toBe(2);
+    await approveCompanyScript(db, draft.id, actor.id);
+    expect(await db.task.count({ where: { scriptId: draft.id } })).toBe(6);
+    expect((await db.script.findUniqueOrThrow({ where: { id: draft.id } })).status).toBe('APPROVED');
+    expect(await db.aiRun.count({ where: { companyId: company.id, provider: 'mock', success: true } })).toBe(3);
+  });
+
+  it('una empresa suprimida no genera el siguiente paso al registrar un resultado', async () => {
+    const { company, task, next } = await caspeTask();
+    await db.suppressionList.create({ data: { companyId: company.id, reason: 'Test' } });
+    await completeTask(db, task.id, 'No contesta');
+    expect(await db.task.count({ where: { companyId: company.id, cadenceStepId: next.id } })).toBe(0);
+  });
+
+  it.each(['companyId', 'email', 'phone'] as const)('aprobar no genera tareas para una empresa suprimida por %s', async identifier => {
+    const company = await db.company.create({ data: { name: 'Empresa suprimida', normalizedName: randomUUID(), country: 'ES', sector: 'Industria' } });
+    companyIds.push(company.id);
+    await db.contact.create({ data: { companyId: company.id, fullName: 'Contacto general', email: `${company.id}@example.test`, phone: `phone-${company.id}` } });
+    await db.suppressionList.create({ data: { reason: 'Test', ...(identifier === 'companyId' ? { companyId: company.id } : identifier === 'email' ? { email: `${company.id}@example.test` } : { phone: `phone-${company.id}` }) } });
+    await investigateCompany(db, company.id);
+    const draft = await generateCompanyScript(db, company.id);
+    await approveCompanyScript(db, draft.id);
+    expect(await db.task.count({ where: { companyId: company.id } })).toBe(0);
+    expect((await db.companyCadence.findFirstOrThrow({ where: { companyId: company.id } })).status).toBe('PAUSED');
   });
 
   it('las empresas suprimidas con y sin guion no reciben tareas tras el seed', async () => {

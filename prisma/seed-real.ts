@@ -4,6 +4,7 @@ import { PrismaClient, ContactSource, ConsentStatus, Country, LegalBasis, UserRo
 import { hash } from 'bcryptjs';
 import { normalizeText } from '../src/lib/normalization';
 import { isSuppressed } from '../src/lib/suppression';
+import { defaultWeights } from '../src/lib/research/scoring';
 
 type Prospect = { id: string; empresa: string; prioridad: string; estado: string; pais: string; provincia: string; comarca: string; municipio: string; sector: string; lineas_try: string[]; angulo_entrada: string; contacto: { texto: string; emails: string[]; telefonos: string[]; verificado: boolean; tipo: string; base_legal: string }; proxima_accion: string; fecha_proxima_accion: string | null; fuente: string };
 type ScriptData = { prospecto_id: string; interlocutor?: string; cadencia?: { dia: number; canal: string; accion: string }[]; [key: string]: unknown };
@@ -19,6 +20,8 @@ async function main() {
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
   const salesPassword = process.env.SEED_SALES_PASSWORD;
   if (!adminPassword || !salesPassword) throw new Error('SEED_ADMIN_PASSWORD y SEED_SALES_PASSWORD son obligatorias.');
+  await prisma.scoringWeights.upsert({ where: { id: 'default' }, update: {}, create: { id: 'default', ...defaultWeights } });
+  for (const script of scriptFile.guiones) await prisma.template.upsert({ where: { name: `Base ${script.prospecto_id}` }, update: {}, create: { name: `Base ${script.prospecto_id}`, content: script as object } });
   const admin = await prisma.user.upsert({ where: { email: 'admin@try.company' }, update: { passwordHash: await hash(adminPassword, 12) }, create: { email: 'admin@try.company', name: 'Administración try!', role: UserRole.ADMIN, passwordHash: await hash(adminPassword, 12) } });
   await prisma.user.upsert({ where: { email: 'comercial@try.company' }, update: { passwordHash: await hash(salesPassword, 12) }, create: { email: 'comercial@try.company', name: 'Comercial Demo', role: UserRole.SALES, passwordHash: await hash(salesPassword, 12) } });
   for (const [line, description] of products) await prisma.product.upsert({ where: { line }, update: { name: line, description }, create: { name: line, line, description } });
