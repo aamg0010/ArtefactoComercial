@@ -1,4 +1,6 @@
 # try! Comercial: todo el tráfico va a la app Node.js (pm2: try-comercial, 127.0.0.1:3041)
+# Sin esto Apache convierte "/" en "/index.html" antes del proxy y la portada da 404.
+DirectoryIndex disabled
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteCond %{HTTPS} !=on

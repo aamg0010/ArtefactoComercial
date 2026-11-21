@@ -263,6 +263,17 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     expect(email).toMatchObject({ to: 'compras@cliente-email.test', approvedBy: 'comercial-trygestion@test.local', externalRef: `task:${task.id}`, oportunidadId: mock.state.opportunities[0].id });
     expect(String(email.text)).toContain('BAJA'); expect(String(email.unsubscribeUrl)).toMatch(/^http:\/\/localhost:3000\/baja\//);
     expect(String(email.html)).not.toContain('<script');
+    const remitente = await db.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(email.firmante).toBe(remitente.name?.trim() || undefined);
+    // Firma editable: lo que se escribe en el formulario se envía y queda guardado para el siguiente email.
+    const task2 = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Email día 4', scriptId: script.id } });
+    await sendTaskEmail(db, { ...input, taskId: task2.id, firmaNombre: 'Andrés Martínez', firmaCargo: 'Gerente' }, { env, client: client() });
+    expect(mock.state.emails.at(-1)).toMatchObject({ firmante: 'Andrés Martínez', cargo: 'Gerente' });
+    expect(await db.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({ signatureName: 'Andrés Martínez', signatureTitle: 'Gerente' });
+    const task3 = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Email día 8', scriptId: script.id } });
+    await sendTaskEmail(db, { ...input, taskId: task3.id }, { env, client: client() });
+    expect(mock.state.emails.at(-1)).toMatchObject({ firmante: 'Andrés Martínez', cargo: 'Gerente' });
+    await db.user.update({ where: { id: userId }, data: { signatureName: null, signatureTitle: null } });
     await expect(sendTaskEmail(db, { ...input, body: 'Texto cambiado' }, { env, client: client() })).rejects.toThrow('EMAIL_CONTENT_CHANGED');
   });
 
