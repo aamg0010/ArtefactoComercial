@@ -31,6 +31,7 @@ async function main() {
   const db = new PrismaClient({ datasources: { db: { url: e2eDatabaseUrl } } });
   try {
     await db.$transaction([
+      db.syncOutbox.deleteMany(), db.emailDispatch.deleteMany(),
       db.activity.deleteMany(), db.task.deleteMany(), db.companyCadence.deleteMany(),
       db.suppressionList.deleteMany(), db.company.deleteMany(),
       db.cadenceStep.deleteMany(), db.cadence.deleteMany(),
