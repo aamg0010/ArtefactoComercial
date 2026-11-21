@@ -10,7 +10,7 @@ export default function Login() {
         <Image src="/brand/try-company-blanco.png" alt="try! company" width={180} height={96} className="h-auto w-40" />
         <div>
           <p className="font-display text-3xl font-semibold leading-tight">Encuentra, estudia y acompaña a cada empresa.</p>
-          <p className="mt-4 text-lg text-try-100">Rastreo, guiones, llamadas, emails y seguimiento diario, conectado con trygestión.</p>
+          <p className="mt-4 font-serif text-lg text-try-100">Rastreo, guiones, llamadas, emails y seguimiento diario, conectado con trygestión.</p>
         </div>
         <p className="font-display text-xs uppercase tracking-[0.2em] text-lima-300">try! Comercial</p>
       </section>

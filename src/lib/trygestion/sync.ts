@@ -5,6 +5,7 @@ import { TrygestionClient, TrygestionError, type EventoInput } from './client';
 import { enqueueCompany, enqueueContact } from './outbox';
 import { normalizeDomain, normalizeText } from '../normalization';
 import { companyWebsiteCandidate } from '../company-contact';
+import { appCompanyUrl } from './links';
 
 /** Default stages created by trygestión's `POST /pipeline/inicializar-etapas`. Won/lost use PUT …/estado, which picks the final stage. */
 export const defaultStageMap: Record<string, string> = { DETECTED: 'Prospecto', RESEARCHED: 'Prospecto', CONTACTING: 'Contacto inicial', MEETING: 'Contacto inicial', PROPOSAL: 'Propuesta enviada', NEGOTIATION: 'Negociacion' };
@@ -21,9 +22,17 @@ class Deferred extends Error {}
 class Skipped extends Error {}
 const payloadSchema = z.object({ companyId: z.string().optional(), stage: z.string().optional(), estado: z.enum(['ganada', 'perdida']).optional(), motivo: z.string().optional(), event: z.unknown().optional(), emails: z.array(z.string()).optional(), domains: z.array(z.string()).optional() });
 const eventSchema = z.object({ titulo: z.string().min(1), descripcion: z.string(), fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), fecha_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), tipo: z.string(), ambito: z.literal('externo'), ubicacion: z.string(), entidad_externa: z.string() });
-function originNotes(notes: string | null | undefined, priority: string | null) {
-  const owned = 'Origen: try! Comercial · prospecto · prioridad ';
-  return [...(notes ?? '').split('\n').filter(line => line && !line.startsWith(owned)), `${owned}${priority ?? 'sin asignar'}`].join('\n');
+const ORIGIN_LINE = 'Origen: try! Comercial · prospecto · prioridad ';
+const LINK_LINE = 'Ficha en try! Comercial: ';
+/** Lines owned by try! Comercial in `notas` (the rest belongs to the people using trygestión and is kept as is). */
+export function originNotes(notes: string | null | undefined, priority: string | null, companyId?: string) {
+  const link = companyId ? appCompanyUrl(companyId) : null;
+  const kept = (notes ?? '').split('\n').filter(line => line && !line.startsWith(ORIGIN_LINE) && !line.startsWith(LINK_LINE));
+  return [...kept, `${ORIGIN_LINE}${priority ?? 'sin asignar'}`, ...(link ? [`${LINK_LINE}${link}`] : [])].join('\n');
+}
+export function opportunityDescription(companyId: string) {
+  const link = appCompanyUrl(companyId);
+  return `Oportunidad creada desde try! Comercial (${opportunityReference(companyId)}).${link ? `\n${LINK_LINE}${link}` : ''}`;
 }
 export const opportunityReference = (companyId: string) => `ref try-comercial:${companyId}`;
 /** trygestión validates `web` as a full URL (or empty). */
@@ -41,13 +50,13 @@ async function companyUpsert(db: PrismaClient, id: string, client: TrygestionCli
   if (!company || company.acceptanceStatus !== 'ACCEPTED') throw new Skipped('COMPANY_NOT_ACCEPTED_OR_DELETED');
   let remote = company.trygestionEmpresaId ? await client.empresa(company.trygestionEmpresaId) : await client.buscarEmpresa({ cif: company.nifNit, web: company.website, nombre: company.name });
   if (!remote) {
-    const created = await client.crearEmpresa({ nombre: company.name, cif: company.nifNit, web: remoteWebsite(company.website), ciudad: company.city, provincia: company.region, pais: company.country, telefono: company.phone, email: company.email, sector: company.sector, notas: originNotes(null, company.priority) }, `${key}:company`);
+    const created = await client.crearEmpresa({ nombre: company.name, cif: company.nifNit, web: remoteWebsite(company.website), ciudad: company.city, provincia: company.region, pais: company.country, telefono: company.phone, email: company.email, sector: company.sector, notas: originNotes(null, company.priority, company.id) }, `${key}:company`);
     await linkCompany(db, id, created.id);
     // A repeated CIF links to the client that already exists; its data is then treated like any existing client.
-    remote = 'linkedExisting' in created ? await client.empresa(created.id) : { id: created.id, nombre: company.name, notas: originNotes(null, company.priority) };
+    remote = 'linkedExisting' in created ? await client.empresa(created.id) : { id: created.id, nombre: company.name, notas: originNotes(null, company.priority, company.id) };
   } else await linkCompany(db, id, remote.id);
   {
-    const notes = originNotes(remote.notas, company.priority);
+    const notes = originNotes(remote.notas, company.priority, company.id);
     // Existing clients keep all their data: only the origin line in `notas` is owned by try! Comercial.
     if (notes !== (remote.notas ?? '')) await client.actualizarEmpresa(remote, { notas: notes }, `${key}:notes`);
   }
@@ -57,9 +66,9 @@ async function companyUpsert(db: PrismaClient, id: string, client: TrygestionCli
     // Readable title for the people working in trygestión; the stable reference goes in the description.
     const etapa_id = await stageId(client, 'DETECTED'); const reference = opportunityReference(company.id);
     const existing = await client.buscarOportunidad(remote.id, reference, `Prospección try! Comercial [${company.id}]`);
-    const opportunity = existing ?? await client.crearOportunidad({ titulo: `Prospección · ${company.name}`.slice(0, 250), descripcion: `Oportunidad creada desde try! Comercial (${reference}).`, empresa_id: remote.id, etapa_id, probabilidad: probability }, `${key}:opportunity`);
+    const opportunity = existing ?? await client.crearOportunidad({ titulo: `Prospección · ${company.name}`.slice(0, 250), descripcion: opportunityDescription(company.id), empresa_id: remote.id, etapa_id, probabilidad: probability }, `${key}:opportunity`);
     await db.company.update({ where: { id }, data: { trygestionOportunidadId: opportunity.id } });
-  } else await client.actualizarOportunidad(company.trygestionOportunidadId, probability, `${key}:probability`);
+  } else await client.actualizarOportunidad(company.trygestionOportunidadId, probability, `${key}:probability`, opportunityDescription(company.id));
   await db.company.update({ where: { id }, data: { trygestionSyncedAt: new Date() } });
   for (const contact of company.contacts) await enqueueContact(db, contact.id);
 }

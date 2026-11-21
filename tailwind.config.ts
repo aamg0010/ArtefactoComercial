@@ -4,6 +4,8 @@ import type { Config } from 'tailwindcss';
 // y con el logo: violeta #434AEA y lima #B5FF7B.
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
+  // Clases construidas dinámicamente (prioridad A/B/C).
+  safelist: ['badge-a', 'badge-b', 'badge-c'],
   theme: {
     extend: {
       colors: {
@@ -17,7 +19,8 @@ const config: Config = {
         light: { bg: '#f8f9fa', card: '#ffffff', text: '#1f2937', muted: '#6b7280', border: '#e5e7eb' },
       },
       fontFamily: {
-        sans: ['var(--font-serif)', 'Georgia', 'serif'],
+        sans: ['var(--font-display)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-serif)', 'Georgia', 'serif'],
         display: ['var(--font-display)', 'system-ui', 'sans-serif'],
       },
       boxShadow: { card: '0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06)' },

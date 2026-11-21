@@ -210,6 +210,12 @@ La especificación aprobada está en [`docs/INTEGRACION_TRYGESTION.md`](docs/INT
 - **Cola `SyncOutbox`:** las acciones de negocio solo encolan (en la misma transacción); `npm run trygestion:sync` procesa por lotes con un único proceso a la vez (advisory lock), reintentos con backoff de 1 min a 2 h y 8 intentos como máximo. Las actividades de una empresa aún no enviada esperan sin fallar. Errores permanentes (401, etapa inexistente, coincidencia ambigua) quedan en *FAILED* y se ven en `/integracion`.
 - **Email e IA:** con `EMAIL_TRANSPORT=trygestion`, *Mi día* muestra “Revisar y enviar email”; el envío exige casilla de aprobación, comprueba supresión y destinatario corporativo, añade el pie de BAJA y un enlace firmado `/baja/<token>`, y es idempotente por tarea. Con `LLM_PROVIDER=trygestion` la IA usa la clave OpenAI del tenant guardada en trygestión (la clave no sale de trygestión).
 
+### Enlaces entre try! Comercial y trygestión
+
+- **Desde try! Comercial:** la ficha de cada empresa enlazada tiene *Abrir en trygestión* (`https://trygestion.com/empresas?ver=<id>`, abre la empresa directamente) y *Pipeline de trygestión*. Las tarjetas del Pipeline de la app llevan un enlace *trygestión ↗*.
+- **Desde trygestión:** con `APP_PUBLIC_URL` configurada, la sincronización añade a las notas de la empresa la línea `Ficha en try! Comercial: <url>` y la incluye en la descripción de la oportunidad. Solo se reemplazan las líneas propias de try! Comercial; las notas del equipo se conservan, y una descripción reescrita en trygestión no se pisa. Si cambia la dirección, `npm run trygestion:backfill` + `trygestion:sync` actualiza los enlaces.
+- Un botón dentro del Pipeline de trygestión requiere cambiar su frontend, cuyo código fuente actual no está en el servidor (el `src` del servidor no compila); queda pendiente de localizar ese código.
+
 ### Activar
 
 1. En trygestión (cuando esté desplegada su parte: token de servicio y `/api/comercial/*`), crea un token para el tenant y comprueba que el Pipeline tiene sus etapas.

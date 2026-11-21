@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 /* Lineamientos try! company (como trygestión): violeta #5858F4 como principal, lima #B5FF7B como acento,
-   Poppins para títulos e interfaz y DM Serif Display para el texto; tarjetas rounded-2xl y botones rounded-xl. */
+   Poppins para títulos e interfaz; DM Serif Display (la serif del logo) como acento en lemas y subtítulos;
+   tarjetas rounded-2xl y botones rounded-xl. */
 :root {
   --color-primary: #5858f4;
   --color-primary-hover: #4f3fe8;
@@ -17,7 +18,7 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
-  body { @apply min-h-screen antialiased; background-color: var(--color-bg); color: var(--color-text); font-family: var(--font-serif), Georgia, serif; }
+  body { @apply min-h-screen antialiased; background-color: var(--color-bg); color: var(--color-text); font-family: var(--font-display), system-ui, sans-serif; }
   h1, h2, h3, h4, h5, h6, label, button, nav, th, summary, legend, .font-display { font-family: var(--font-display), system-ui, sans-serif; }
   h1 { @apply text-2xl font-bold tracking-tight text-try-950; }
   h2 { @apply text-try-950; }
@@ -51,5 +52,5 @@
   .badge-c { @apply bg-slate-100 text-slate-600; }
   .badge-warning { @apply bg-amber-100 text-amber-800; }
   .page-title { @apply mb-1 text-2xl font-bold text-try-950; }
-  .page-subtitle { @apply mb-6 text-sm text-slate-500; font-family: var(--font-display), system-ui, sans-serif; }
+  .page-subtitle { @apply mb-6 text-base text-slate-500; font-family: var(--font-serif), Georgia, serif; }
 }

@@ -1,3 +1,4 @@
+import { trygestionEmpresaUrl, trygestionPipelineUrl } from '@/lib/trygestion/links';
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import { companyAction } from './actions';
@@ -23,7 +24,13 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   return <main className="mx-auto max-w-5xl space-y-6 p-5">
     <h1 className="page-title">{company.name}</h1>
     <p>Revisión: {company.acceptanceStatus === 'PENDING' ? 'Pendiente de aceptar' : company.acceptanceStatus === 'DISCARDED' ? 'Descartada' : 'Lista para trabajar'}</p>
-    {company.trygestionEmpresaId && <p role="status">En trygestión · {company.trygestionEmpresaId}</p>}
+    {company.trygestionEmpresaId && <section aria-label="trygestión" className="card flex flex-wrap items-center justify-between gap-3 border-try-100 bg-try-50/60 py-4">
+      <p className="font-display text-sm text-try-900"><span className="badge badge-b mr-2">En trygestión</span><span className="text-xs text-slate-500">{company.trygestionEmpresaId}</span></p>
+      <div className="flex flex-wrap gap-2">
+        <a className="inline-flex items-center gap-1 rounded-xl bg-try-500 px-3 py-2 font-display text-sm font-medium text-white shadow-sm hover:bg-try-600 hover:text-white" href={trygestionEmpresaUrl(company.trygestionEmpresaId)} target="_blank" rel="noopener noreferrer">Abrir en trygestión ↗</a>
+        <a className="inline-flex items-center gap-1 rounded-xl border border-try-200 bg-white px-3 py-2 font-display text-sm font-medium text-try-700 hover:border-try-500" href={trygestionPipelineUrl()} target="_blank" rel="noopener noreferrer">Pipeline de trygestión ↗</a>
+      </div>
+    </section>}
     <PlacesView companyId={company.id} country={company.country}/>
     {searchParams.error && <p role="alert">No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.</p>}
     {searchParams.done && <p role="status">Operación completada.</p>}

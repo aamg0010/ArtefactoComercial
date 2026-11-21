@@ -107,6 +107,33 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     expect((await db.company.findUniqueOrThrow({ where: { id: local.id } })).trygestionOportunidadId).toBe(remote.id);
   });
 
+  it('escribe en trygestión el enlace a la ficha de try! Comercial y lo actualiza sin tocar las notas del cliente', async () => {
+    const original = process.env.APP_PUBLIC_URL;
+    process.env.APP_PUBLIC_URL = 'http://100.89.173.49:3001/';
+    try {
+      mock.state.companies.push({ id: 'cliente-con-notas', nombre: 'Prueba trygestión Cliente Con Notas SL', cif: 'B44444444', notas: 'Cliente desde 2019\nLlamar por la tarde' });
+      const linked = await company({ nifNit: 'B44444444', name: 'Prueba trygestión Cliente Con Notas SL' });
+      const fresh = await company();
+      await enqueueCompany(db, linked.id); await enqueueCompany(db, fresh.id); await drain();
+      const notesLinked = String(mock.state.companies.find(row => row.id === 'cliente-con-notas')!.notas).split('\n');
+      expect(notesLinked).toEqual(['Cliente desde 2019', 'Llamar por la tarde', 'Origen: try! Comercial · prospecto · prioridad B', `Ficha en try! Comercial: http://100.89.173.49:3001/empresas/${linked.id}`]);
+      const opportunity = mock.state.opportunities.find(row => String(row.descripcion).includes(fresh.id))!;
+      expect(String(opportunity.descripcion)).toContain(`Ficha en try! Comercial: http://100.89.173.49:3001/empresas/${fresh.id}`);
+      // Nueva dirección pública: al reencolar se reemplazan solo las líneas propias.
+      process.env.APP_PUBLIC_URL = 'https://comercial.try.test';
+      await enqueueCompany(db, linked.id); await drain();
+      const updated = String(mock.state.companies.find(row => row.id === 'cliente-con-notas')!.notas).split('\n');
+      expect(updated).toEqual(['Cliente desde 2019', 'Llamar por la tarde', 'Origen: try! Comercial · prospecto · prioridad B', `Ficha en try! Comercial: https://comercial.try.test/empresas/${linked.id}`]);
+      const linkedOpportunity = mock.state.opportunities.find(row => row.empresa_id === 'cliente-con-notas')!;
+      expect(String(linkedOpportunity.descripcion)).toContain(`https://comercial.try.test/empresas/${linked.id}`);
+      // Si alguien del equipo reescribe la descripción en trygestión, no se pisa.
+      linkedOpportunity.descripcion = 'Notas del comercial';
+      process.env.APP_PUBLIC_URL = 'https://otra.try.test';
+      await enqueueCompany(db, linked.id); await drain();
+      expect(linkedOpportunity.descripcion).toBe('Notas del comercial');
+    } finally { if (original === undefined) delete process.env.APP_PUBLIC_URL; else process.env.APP_PUBLIC_URL = original; }
+  });
+
   it('enlaza también por dominio web y por nombre normalizado', async () => {
     mock.state.companies.push({ id: 'por-dominio', nombre: 'Distinto SL', web: 'https://www.dominio-igual.test/inicio', notas: null });
     mock.state.companies.push({ id: 'por-nombre', nombre: 'PRUEBA TRYGESTIÓN NOMBRE IGUAL, S.L.', notas: null });
