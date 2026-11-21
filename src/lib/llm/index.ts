@@ -31,12 +31,14 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
   let outputTokens: number | undefined;
   let success = false;
   let errorCode = 'PROVIDER_ERROR';
+  // Si un intento no pasa la validación, el siguiente recibe la lista de fallos para corregirlos (sin reenviar datos sensibles).
+  let feedback = '';
   try {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         let raw: unknown = context.mockResponse;
         if (configuration.provider === 'trygestion') {
-          const result = await new TrygestionClient({ env: context.env, fetcher: context.fetcher }).generarIA({ ...input, schema: zodToJsonSchema(input.schema, { effectStrategy: 'input', $refStrategy: 'none' }), maxTokens: 2000 });
+          const result = await new TrygestionClient({ env: context.env, fetcher: context.fetcher }).generarIA({ system: input.system, prompt: input.prompt + feedback, schema: zodToJsonSchema(input.schema, { effectStrategy: 'input', $refStrategy: 'none' }), maxTokens: 4000 });
           configuration.model = result.model;
           inputTokens = (inputTokens ?? 0) + (result.usage?.input_tokens ?? result.usage?.prompt_tokens ?? 0);
           outputTokens = (outputTokens ?? 0) + (result.usage?.output_tokens ?? result.usage?.completion_tokens ?? 0);
@@ -48,8 +50,8 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
             headers: anthropic ? { 'content-type': 'application/json', 'x-api-key': configuration.key!, 'anthropic-version': '2023-06-01' } : { 'content-type': 'application/json', Authorization: `Bearer ${configuration.key}` },
             body: JSON.stringify(anthropic ? {
               model: configuration.model, max_tokens: 6000, system: input.system,
-              messages: [{ role: 'user', content: input.prompt }],
-            } : { model: configuration.model, instructions: input.system, input: input.prompt, text: { format: { type: 'json_object' } }, max_output_tokens: 6000 }),
+              messages: [{ role: 'user', content: input.prompt + feedback }],
+            } : { model: configuration.model, instructions: input.system, input: input.prompt + feedback, text: { format: { type: 'json_object' } }, max_output_tokens: 6000 }),
           });
           if (!response.ok) { await response.body?.cancel(); throw new Error(`HTTP_${response.status}`); }
           const payload: unknown = await response.json();
@@ -64,6 +66,7 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
         return result;
       } catch (error) {
         // Never persist provider bodies, prompts, credentials or Zod input values.
+        if (error instanceof z.ZodError) feedback = `\n\nTu respuesta anterior no pasó la validación. Corrige estos puntos y devuelve el JSON completo:\n- ${[...new Set(error.issues.map(issue => `${issue.path.join('.') || 'general'}: ${issue.message}`))].slice(0, 20).join('\n- ')}`;
         errorCode = error instanceof z.ZodError ? 'VALIDATION_ERROR' : error instanceof SyntaxError ? 'INVALID_JSON' : 'PROVIDER_ERROR';
         if (configuration.simulated || attempt === 2) throw new Error(errorCode);
         await (context.pause ?? wait)(1000 * (attempt + 1));

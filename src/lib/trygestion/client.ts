@@ -36,15 +36,18 @@ export type ActividadInput = { tipo: 'llamada' | 'email' | 'reunion' | 'nota'; t
 export type EventoInput = { titulo: string; descripcion: string; fecha_inicio: string; fecha_fin: string; hora: string; tipo: string; ambito: 'externo'; ubicacion: string; entidad_externa: string };
 export type EmailInput = { to: string; subject: string; html: string; text: string; approvedBy: string; firmante?: string; cargo?: string; externalRef: string; oportunidadId?: string; unsubscribeUrl: string };
 
+// La IA (guiones largos) tarda bastante más que el resto de llamadas; trygestión espera a OpenAI hasta 60 s.
+export const IA_TIMEOUT_MS = 90_000;
+
 export class TrygestionClient {
   readonly configuration: ReturnType<typeof trygestionConfiguration>;
   constructor(private readonly options: { env?: Record<string, string | undefined>; fetcher?: typeof fetch } = {}) { this.configuration = trygestionConfiguration(options.env); }
   get enabled() { return this.configuration.enabled; }
-  private async request<S extends z.ZodTypeAny>(path: string, schema: S, method = 'GET', data?: unknown, key?: string, idempotencyKey?: string): Promise<z.output<S>> {
+  private async request<S extends z.ZodTypeAny>(path: string, schema: S, method = 'GET', data?: unknown, key?: string, idempotencyKey?: string, timeoutMs = 15_000): Promise<z.output<S>> {
     if (!this.enabled) throw new TrygestionError('DISABLED');
     let response: Response;
     try {
-      response = await (this.options.fetcher ?? fetch)(`${this.configuration.url}${path}`, { method, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15_000),
+      response = await (this.options.fetcher ?? fetch)(`${this.configuration.url}${path}`, { method, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
         headers: { Authorization: `Bearer ${this.configuration.token}`, Accept: 'application/json', ...(data === undefined ? {} : { 'Content-Type': 'application/json' }), ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
         ...(data === undefined ? {} : { body: JSON.stringify(data) }),
       });
@@ -123,6 +126,6 @@ export class TrygestionClient {
   crearActividad(id: string, data: ActividadInput, key?: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}/actividades`, linkedSchema, 'POST', data, undefined, key); }
   crearEvento(data: EventoInput, key?: string) { return this.request('/eventos', linkedSchema, 'POST', data, undefined, key); }
   enviarEmail(data: EmailInput) { return this.request('/comercial/email/enviar', acknowledgement, 'POST', data, undefined, data.externalRef); }
-  generarIA(data: { system: string; prompt: string; schema: Record<string, unknown>; maxTokens: number }) { return this.request('/comercial/ia/generar', z.object({ json: z.unknown(), model: z.string(), usage: z.object({ input_tokens: z.number().optional(), output_tokens: z.number().optional(), prompt_tokens: z.number().optional(), completion_tokens: z.number().optional() }).optional() }), 'POST', data); }
+  generarIA(data: { system: string; prompt: string; schema: Record<string, unknown>; maxTokens: number }) { return this.request('/comercial/ia/generar', z.object({ json: z.unknown(), model: z.string(), usage: z.object({ input_tokens: z.number().optional(), output_tokens: z.number().optional(), prompt_tokens: z.number().optional(), completion_tokens: z.number().optional() }).optional() }), 'POST', data, undefined, undefined, IA_TIMEOUT_MS); }
   suprimir(data: { email?: string; dominio?: string; motivo: string }, key?: string) { return this.request('/comercial/supresion', acknowledgement, 'POST', data, undefined, key); }
 }
