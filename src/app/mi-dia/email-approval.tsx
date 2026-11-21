@@ -5,7 +5,7 @@ export function EmailApproval({ taskId, fecha, to, email }: { taskId: string; fe
     <label className="block">Destinatario corporativo<input type="email" name="to" required defaultValue={to}/></label>
     <label className="block">Asunto<input className="w-full" name="subject" required defaultValue={email.asunto}/></label>
     <label className="block">Cuerpo<textarea className="w-full" rows={12} name="body" required defaultValue={email.cuerpo}/></label>
-    <p>Revisa destinatario, base legal y texto. Sustituye [TELÉFONO] y [WEB]. Se añadirá el enlace de BAJA.</p>
+    <p>Revisa destinatario, base legal y texto. Sustituye [TELÉFONO] y [WEB]. Al enviar se añaden tu firma de try! company y el pie de BAJA.</p>
     <label className="block"><input type="checkbox" name="approved" required/> He revisado el contenido y apruebo este envío.</label><button>Aprobar y enviar email</button>
   </form></details>;
 }

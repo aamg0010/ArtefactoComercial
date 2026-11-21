@@ -62,7 +62,7 @@ export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { e
     const unsubscribeUrl = new URL(`/baja/${unsubscribeToken(company.id, env.AUTH_SECRET)}`, root).toString();
     const text = `${input.body}\n\ntry! company · Contacto comercial B2B. Para dejar de recibir comunicaciones responde BAJA o confirma tu baja: ${unsubscribeUrl}`;
     const html = `<p>${text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')}</p>`;
-    await client.enviarEmail({ to: recipient, subject: input.subject, text, html, approvedBy: user.email, externalRef: `task:${task.id}`, unsubscribeUrl, ...(company.trygestionOportunidadId ? { oportunidadId: company.trygestionOportunidadId } : {}) });
+    await client.enviarEmail({ to: recipient, subject: input.subject, text, html, approvedBy: user.email, ...(user.name?.trim() ? { firmante: user.name.trim() } : {}), externalRef: `task:${task.id}`, unsubscribeUrl, ...(company.trygestionOportunidadId ? { oportunidadId: company.trygestionOportunidadId } : {}) });
     await db.emailDispatch.update({ where: { taskId: task.id }, data: { status: 'SENT', sentAt: new Date() } });
     return { sent: true, duplicate: false };
   } catch (error) {

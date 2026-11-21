@@ -263,6 +263,8 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     expect(email).toMatchObject({ to: 'compras@cliente-email.test', approvedBy: 'comercial-trygestion@test.local', externalRef: `task:${task.id}`, oportunidadId: mock.state.opportunities[0].id });
     expect(String(email.text)).toContain('BAJA'); expect(String(email.unsubscribeUrl)).toMatch(/^http:\/\/localhost:3000\/baja\//);
     expect(String(email.html)).not.toContain('<script');
+    const remitente = await db.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(email.firmante).toBe(remitente.name?.trim() || undefined);
     await expect(sendTaskEmail(db, { ...input, body: 'Texto cambiado' }, { env, client: client() })).rejects.toThrow('EMAIL_CONTENT_CHANGED');
   });
 

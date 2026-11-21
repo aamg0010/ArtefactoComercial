@@ -34,7 +34,7 @@ export type ContactoInput = { empresa_id: string; nombre: string; cargo?: string
 export type OportunidadInput = { titulo: string; descripcion?: string; empresa_id: string; contacto_id?: string | null; etapa_id: string; probabilidad: number };
 export type ActividadInput = { tipo: 'llamada' | 'email' | 'reunion' | 'nota'; titulo: string; descripcion: string; fecha_programada?: string | null };
 export type EventoInput = { titulo: string; descripcion: string; fecha_inicio: string; fecha_fin: string; hora: string; tipo: string; ambito: 'externo'; ubicacion: string; entidad_externa: string };
-export type EmailInput = { to: string; subject: string; html: string; text: string; approvedBy: string; externalRef: string; oportunidadId?: string; unsubscribeUrl: string };
+export type EmailInput = { to: string; subject: string; html: string; text: string; approvedBy: string; firmante?: string; externalRef: string; oportunidadId?: string; unsubscribeUrl: string };
 
 export class TrygestionClient {
   readonly configuration: ReturnType<typeof trygestionConfiguration>;
