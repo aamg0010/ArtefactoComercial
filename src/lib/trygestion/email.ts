@@ -32,7 +32,7 @@ export async function unsubscribeCompany(db: PrismaClient, token: string, secret
 }
 export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { env?: Record<string, string | undefined>; client?: TrygestionClient } = {}) {
   const env = options.env ?? process.env;
-  const input = z.object({ taskId: z.string(), userId: z.string(), approved: z.literal(true), to: z.string().email(), subject: z.string().trim().min(1).max(500), body: z.string().trim().min(1).max(30000) }).parse(raw);
+  const input = z.object({ taskId: z.string(), userId: z.string(), approved: z.literal(true), to: z.string().email(), subject: z.string().trim().min(1).max(500), body: z.string().trim().min(1).max(30000), firmaNombre: z.string().trim().max(120).optional(), firmaCargo: z.string().trim().max(120).optional() }).parse(raw);
   if (env.EMAIL_TRANSPORT !== 'trygestion') throw new TrygestionError('EMAIL_COPY_ONLY');
   const client = options.client ?? new TrygestionClient({ env }); if (!client.enabled) throw new TrygestionError('DISABLED');
   if (!env.AUTH_SECRET || !env.AUTH_URL) throw new TrygestionError('UNSUBSCRIBE_CONFIGURATION_REQUIRED');
@@ -47,6 +47,12 @@ export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { e
   if (contacts.some(c => c.requiresConsent && c.consentStatus !== 'GRANTED')) throw new TrygestionError('EMAIL_CONSENT_REQUIRED');
   if (/\[(?:TELÉFONO|WEB)\]/i.test(input.body)) throw new TrygestionError('EMAIL_RESOLVE_VARIABLES');
   if (await isSuppressed(db, company.id)) throw new TrygestionError('COMPANY_SUPPRESSED');
+  // Firma: lo escrito en el formulario se guarda como firma del usuario para los próximos envíos.
+  if (input.firmaNombre !== undefined || input.firmaCargo !== undefined) {
+    await db.user.update({ where: { id: user.id }, data: { ...(input.firmaNombre !== undefined ? { signatureName: input.firmaNombre || null } : {}), ...(input.firmaCargo !== undefined ? { signatureTitle: input.firmaCargo || null } : {}) } });
+  }
+  const firmante = (input.firmaNombre ?? user.signatureName ?? user.name ?? '').trim();
+  const cargo = (input.firmaCargo ?? user.signatureTitle ?? '').trim();
   const hash = createHash('sha256').update(JSON.stringify([recipient, input.subject, input.body])).digest('hex');
   const reserved = await db.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`email:${task.id}`}))`;
@@ -62,7 +68,7 @@ export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { e
     const unsubscribeUrl = new URL(`/baja/${unsubscribeToken(company.id, env.AUTH_SECRET)}`, root).toString();
     const text = `${input.body}\n\ntry! company · Contacto comercial B2B. Para dejar de recibir comunicaciones responde BAJA o confirma tu baja: ${unsubscribeUrl}`;
     const html = `<p>${text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')}</p>`;
-    await client.enviarEmail({ to: recipient, subject: input.subject, text, html, approvedBy: user.email, ...(user.name?.trim() ? { firmante: user.name.trim() } : {}), externalRef: `task:${task.id}`, unsubscribeUrl, ...(company.trygestionOportunidadId ? { oportunidadId: company.trygestionOportunidadId } : {}) });
+    await client.enviarEmail({ to: recipient, subject: input.subject, text, html, approvedBy: user.email, ...(firmante ? { firmante } : {}), ...(cargo ? { cargo } : {}), externalRef: `task:${task.id}`, unsubscribeUrl, ...(company.trygestionOportunidadId ? { oportunidadId: company.trygestionOportunidadId } : {}) });
     await db.emailDispatch.update({ where: { taskId: task.id }, data: { status: 'SENT', sentAt: new Date() } });
     return { sent: true, duplicate: false };
   } catch (error) {

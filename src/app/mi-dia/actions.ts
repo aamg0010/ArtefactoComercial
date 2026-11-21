@@ -15,7 +15,7 @@ export async function recordTaskResult(formData: FormData) {
 export async function approveEmail(formData: FormData) {
   const session = await auth(); if (!session?.user?.id) throw new Error('No autenticado');
   let code = 'EMAIL_SENT';
-  try { await sendTaskEmail(prisma, { taskId: String(formData.get('taskId')), userId: session.user.id, approved: formData.get('approved') === 'on', to: formData.get('to'), subject: formData.get('subject'), body: formData.get('body') }); }
+  try { await sendTaskEmail(prisma, { taskId: String(formData.get('taskId')), userId: session.user.id, approved: formData.get('approved') === 'on', to: formData.get('to'), subject: formData.get('subject'), body: formData.get('body'), firmaNombre: String(formData.get('firmaNombre') ?? ''), firmaCargo: String(formData.get('firmaCargo') ?? '') }); }
   catch (error) { code = error instanceof TrygestionError ? error.code : 'EMAIL_REVIEW_REQUIRED'; }
   revalidatePath('/mi-dia');
   redirect(`/mi-dia?fecha=${encodeURIComponent(String(formData.get('fecha')))}&email=${encodeURIComponent(code)}`);
