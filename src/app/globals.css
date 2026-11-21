@@ -1,0 +1,2 @@
+@tailwind base; @tailwind components; @tailwind utilities;
+@layer base { body { @apply bg-slate-50 text-slate-900; } input, select, textarea { @apply w-full rounded border border-slate-300 px-3 py-2 text-sm; } button { @apply rounded bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50; } }
