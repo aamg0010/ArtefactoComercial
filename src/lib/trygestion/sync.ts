@@ -25,6 +25,7 @@ function originNotes(notes: string | null | undefined, priority: string | null) 
   const owned = 'Origen: try! Comercial · prospecto · prioridad ';
   return [...(notes ?? '').split('\n').filter(line => line && !line.startsWith(owned)), `${owned}${priority ?? 'sin asignar'}`].join('\n');
 }
+export const opportunityReference = (companyId: string) => `ref try-comercial:${companyId}`;
 /** trygestión validates `web` as a full URL (or empty). */
 export function remoteWebsite(value: string | null | undefined) {
   const candidate = value?.trim(); if (!candidate) return null;
@@ -53,9 +54,10 @@ async function companyUpsert(db: PrismaClient, id: string, client: TrygestionCli
   company = await db.company.findUniqueOrThrow({ where: { id }, include: { scores: { orderBy: { createdAt: 'desc' }, take: 1 }, contacts: true } });
   const probability = company.scores[0]?.total ?? ({ A: 70, B: 50, C: 25 }[company.priority ?? ''] ?? 0);
   if (!company.trygestionOportunidadId) {
-    const etapa_id = await stageId(client, 'DETECTED'); const title = `Prospección try! Comercial [${company.id}]`;
-    const existing = await client.buscarOportunidad(remote.id, title);
-    const opportunity = existing ?? await client.crearOportunidad({ titulo: title, empresa_id: remote.id, etapa_id, probabilidad: probability }, `${key}:opportunity`);
+    // Readable title for the people working in trygestión; the stable reference goes in the description.
+    const etapa_id = await stageId(client, 'DETECTED'); const reference = opportunityReference(company.id);
+    const existing = await client.buscarOportunidad(remote.id, reference, `Prospección try! Comercial [${company.id}]`);
+    const opportunity = existing ?? await client.crearOportunidad({ titulo: `Prospección · ${company.name}`.slice(0, 250), descripcion: `Oportunidad creada desde try! Comercial (${reference}).`, empresa_id: remote.id, etapa_id, probabilidad: probability }, `${key}:opportunity`);
     await db.company.update({ where: { id }, data: { trygestionOportunidadId: opportunity.id } });
   } else await client.actualizarOportunidad(company.trygestionOportunidadId, probability, `${key}:probability`);
   await db.company.update({ where: { id }, data: { trygestionSyncedAt: new Date() } });
