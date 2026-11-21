@@ -19,10 +19,17 @@ export const researchShape = z.object({
 export type Research = z.infer<typeof researchShape>;
 
 function normalized(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim().toLowerCase(); }
-export function unsupportedNames(text: string, evidence: Evidence[]) {
-  const known = normalized(evidence.map(source => source.text).join(' '));
+// Palabras que empiezan frase con mayúscula y no forman parte de un nombre ("Con Athenea", "Soy Andrés", "Buenos Días").
+const leadingWords = new Set(['con', 'soy', 'en', 'para', 'por', 'de', 'del', 'desde', 'sobre', 'como', 'y', 'o', 'a', 'al', 'hola', 'buenos', 'buenas', 'estimado', 'estimada', 'saludos', 'gracias', 'le', 'les', 'si', 'que', 'mi', 'su', 'nuestro', 'nuestra', 'el', 'la', 'los', 'las', 'un', 'una']);
+/** Secuencias de palabras con mayúscula que no aparecen en las fuentes ni en la lista de nombres permitidos (marca y productos propios). */
+export function unsupportedNames(text: string, evidence: Evidence[], allowed: string[] = []) {
+  const known = normalized([...evidence.map(source => source.text), ...allowed].join(' '));
   const names = text.match(/\b[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3}\b/g) ?? [];
-  return names.filter(name => !known.includes(normalized(name)));
+  return names.map(name => {
+    const words = name.split(/\s+/);
+    while (words.length && leadingWords.has(normalized(words[0]))) words.shift();
+    return words.join(' ');
+  }).filter(name => name.split(' ').length >= 2 && !known.includes(normalized(name)));
 }
 
 export function researchSchema(evidence: Evidence[], lines: string[]) {

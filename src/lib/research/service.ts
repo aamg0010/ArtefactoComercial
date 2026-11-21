@@ -9,7 +9,7 @@ import { hasDirectContact } from '../company-contact';
 import { crawlCompanyWebsite } from './crawler';
 import { mockResearch, researchInstructions, researchSchema, researchShape } from './schema';
 import { calculateScore, defaultWeights } from './scoring';
-import { generatedScriptSchema, generatedScriptShape, mockScript, type StandardStep } from './scripts';
+import { generatedScriptSchema, generatedScriptShape, mockScript, scriptSkeleton, type StandardStep } from './scripts';
 
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 export async function investigateCompany(db: PrismaClient, companyId: string) {
@@ -55,10 +55,14 @@ export async function generateCompanyScript(db: PrismaClient, companyId: string,
   if (templates.length === 0) throw new Error('Ejecuta el seed para cargar las plantillas.');
   const file = JSON.parse(await readFile('data/guiones.json', 'utf8')) as { cadencia_estandar: StandardStep[] };
   const example = mockScript(company.name, product.line, research, file.cadencia_estandar);
+  const catalog = await db.product.findMany({ select: { line: true } });
+  // Nombres propios que siempre se pueden usar: nuestra marca, nuestros productos y la propia empresa.
+  const allowedNames = ['Try Business Solutions', 'Try Company', 'try! company', 'trygestión', 'Bajo Aragón', company.name, ...catalog.map(item => item.line)];
   const script = await generateJson({
-    system: `${researchInstructions}\nGenera un guion comercial BORRADOR en español adaptado al país y rol. Usa las cinco plantillas sólo como estructura, nunca copies sus nombres, cifras, contactos o hechos de otras empresas. El cliente compra productividad, rentabilidad, menos riesgo y capacidad de decisión. No afirmes hipótesis como hechos. Usa exactamente la cadencia estándar. Cada email incluye try! company, motivo, BAJA, [TELÉFONO] y [WEB]. No insertes URLs o emails.`,
-    prompt: JSON.stringify({ pais: company.country, empresa: company.name, ficha: research, producto: product.line, plantillas: templates.map(item => item.content), cadencia: file.cadencia_estandar, formatoJSON: example }),
-    schema: generatedScriptSchema(research.sources, product.line, file.cadencia_estandar),
+    system: `${researchInstructions}\nGenera un guion comercial BORRADOR en español adaptado al país y rol. Usa las cinco plantillas sólo como estructura, nunca copies sus nombres, cifras, años, contactos o hechos de otras empresas. No escribas nombres de personas (ni del comercial ni de nadie): preséntate como "el equipo de try! company". Los únicos nombres propios permitidos son los de la ficha y estos: ${allowedNames.join(', ')}. No pongas cifras ni años que no estén en la ficha (tampoco duraciones como "15 minutos": di "una conversación breve"). El cliente compra productividad, rentabilidad, menos riesgo y capacidad de decisión. No afirmes hipótesis como hechos: plantéalas como preguntas. Usa exactamente la cadencia estándar. Cada email incluye try! company, motivo, BAJA, [TELÉFONO] y [WEB]. No insertes URLs o emails.
+Calidad: personaliza llamada y emails con al menos dos datos concretos de la ficha (actividad, señales o dolores) dichos con naturalidad. Cada email es distinto (primer contacto, aporte de valor, último seguimiento), breve (80-140 palabras), cercano y profesional, de usted; despierta curiosidad por lo que hacemos y termina con una pregunta concreta para tener una conversación breve. Nunca escribas al cliente frases internas como "hipótesis", "no hemos verificado", "borrador" o "revisión humana". Termina cada cuerpo con el pie: "try! company · [TELÉFONO] · [WEB]" y "Si prefiere no recibir más comunicaciones nuestras, responda BAJA."`,
+    prompt: JSON.stringify({ pais: company.country, empresa: company.name, ficha: research, producto: product.line, plantillas: templates.map(item => item.content), cadencia: file.cadencia_estandar, formatoJSON: scriptSkeleton(example) }),
+    schema: generatedScriptSchema(research.sources, product.line, file.cadencia_estandar, allowedNames),
   }, { db, companyId, purpose: 'script', mockResponse: example });
   return db.$transaction(async tx => {
     const latest = await tx.script.aggregate({ where: { companyId }, _max: { version: true } });
