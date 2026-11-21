@@ -1,0 +1,3 @@
+# try! Comercial (crontab del usuario de la suscripción). Logs en ~/try-comercial/logs.
+*/10 * * * * cd $HOME/try-comercial/current && /usr/bin/node scripts/run-typescript.cjs scripts/trygestion-sync.ts >> $HOME/try-comercial/logs/sync.log 2>&1 # TRY_COMERCIAL_SYNC
+30 6 * * * cd $HOME/try-comercial/current && /usr/bin/node scripts/run-typescript.cjs scripts/prospect-daily.ts >> $HOME/try-comercial/logs/rastreo.log 2>&1 # TRY_COMERCIAL_RASTREO
