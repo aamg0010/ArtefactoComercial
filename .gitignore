@@ -5,3 +5,4 @@ playwright-report
 test-results
 generated
 tsconfig.tsbuildinfo
+test-output.log

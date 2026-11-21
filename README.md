@@ -40,7 +40,16 @@ npm test
 npm run test:e2e
 ```
 
-Las pruebas de integración solo se ejecutan cuando se define `TEST_DATABASE_URL`; nunca usan `DATABASE_URL`. Debe apuntar a una base PostgreSQL desechable.
+Las pruebas de integración solo se ejecutan con una `TEST_DATABASE_URL` distinta de `DATABASE_URL` y cuyo nombre de base termine en `_test`. Si falta o es insegura, se omiten sin abrir una conexión. La suite limpia los datos de esa base desechable antes de sembrar; nunca debe usarse una base de trabajo.
+
+En PowerShell, con PostgreSQL del proyecto en el puerto 54329:
+
+```powershell
+$env:TEST_DATABASE_URL = 'postgresql://try:try@localhost:54329/try_comercial_test?schema=public'
+# Para aplicar las migraciones, Prisma requiere DATABASE_URL en este subproceso:
+node -e "require('child_process').spawnSync('npx.cmd', ['prisma', 'migrate', 'deploy'], {shell: true, stdio: 'inherit', env: {...process.env, DATABASE_URL: process.env.TEST_DATABASE_URL}})"
+npm test -- --reporter=verbose > test-output.log 2>&1
+```
 
 No hay cron aplicable todavía: el rastreo diario se incorpora en la Fase 4. Por ello tampoco hay tareas, cadencias, lista de exclusión ni envíos que verificar en esta fase.
 
