@@ -31,7 +31,10 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     return db.company.create({ data: { country: 'ES', city: 'Alcañiz', region: 'Teruel', sector: 'Agroalimentario', priority: 'B', ...data, name, normalizedName: name.toLowerCase() } });
   };
 
+  const originalPublicUrl = process.env.APP_PUBLIC_URL;
   beforeAll(async () => {
+    // Los tests controlan la dirección pública (el .env de la torre la define).
+    delete process.env.APP_PUBLIC_URL;
     mock = await startTrygestionMock();
     env = { TRYGESTION_URL: mock.url, TRYGESTION_TOKEN: mock.token, EMAIL_TRANSPORT: 'trygestion', AUTH_SECRET: 'secreto-de-pruebas-local', AUTH_URL: 'http://localhost:3000' };
     client = () => new TrygestionClient({ env });
@@ -47,6 +50,7 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     mock.state.failures.clear();
   });
   afterAll(async () => {
+    if (originalPublicUrl === undefined) delete process.env.APP_PUBLIC_URL; else process.env.APP_PUBLIC_URL = originalPublicUrl;
     await db.company.deleteMany({ where: { name: { startsWith: 'Prueba trygestión' } } });
     await db.syncOutbox.deleteMany(); await db.emailDispatch.deleteMany();
     await db.user.deleteMany({ where: { email: 'comercial-trygestion@test.local' } });
@@ -108,7 +112,6 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
   });
 
   it('escribe en trygestión el enlace a la ficha de try! Comercial y lo actualiza sin tocar las notas del cliente', async () => {
-    const original = process.env.APP_PUBLIC_URL;
     process.env.APP_PUBLIC_URL = 'http://100.89.173.49:3001/';
     try {
       mock.state.companies.push({ id: 'cliente-con-notas', nombre: 'Prueba trygestión Cliente Con Notas SL', cif: 'B44444444', notas: 'Cliente desde 2019\nLlamar por la tarde' });
@@ -131,7 +134,7 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
       process.env.APP_PUBLIC_URL = 'https://otra.try.test';
       await enqueueCompany(db, linked.id); await drain();
       expect(linkedOpportunity.descripcion).toBe('Notas del comercial');
-    } finally { if (original === undefined) delete process.env.APP_PUBLIC_URL; else process.env.APP_PUBLIC_URL = original; }
+    } finally { delete process.env.APP_PUBLIC_URL; }
   });
 
   it('enlaza también por dominio web y por nombre normalizado', async () => {
