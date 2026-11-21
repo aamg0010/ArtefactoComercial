@@ -224,6 +224,14 @@ La especificación aprobada está en [`docs/INTEGRACION_TRYGESTION.md`](docs/INT
 
 Sin `TRYGESTION_URL`/`TRYGESTION_TOKEN` nada sale de la app: la cola se acumula y se enviará al activar. Los tests usan un servidor simulado local (`src/lib/trygestion/testing/mock-server.ts`) que reproduce el comportamiento de producción; nunca contactan trygestión real.
 
+## Producción: comercial.trygestion.com
+
+- **Dónde:** servidor Plesk (suscripción trycompany.es). App en `~/try-comercial` (`releases/<fecha>`, `current`, `shared/.env` 600, `logs/`), PM2 `try-comercial` en `127.0.0.1:3041`, servicio `pm2-trycompany.es_…` para arrancar tras reinicio. El subdominio `comercial.trygestion.com` tiene un `.htaccess` (proxy + HTTPS) y certificado Let's Encrypt de renovación automática; DNS en GoDaddy (A → 94.143.138.107).
+- **Base de datos:** PostgreSQL 16 de Plesk (componente oficial, solo `127.0.0.1:5432`), base `try_comercial`, usuario `comercial_app`. Datos migrados desde la torre el 21/11/2026; copia en `~/try-comercial/backups/`.
+- **Acceso:** `AUTH_MODE=trygestion` (usuario de trygestión, tenant TRY; CEO = administración). Sesiones de 12 h.
+- **Tareas programadas** (crontab del usuario): `trygestion:sync` cada 10 min y rastreo diario a las 06:30 (`deploy/plesk/cron.txt`).
+- **Desplegar una versión:** en la torre, `git -c core.autocrlf=false archive --format=tar.gz -o try-comercial.tgz origin/main`, subirlo a `~/try-comercial/` y ejecutar `bash kit/deploy/plesk/desplegar.sh ~/try-comercial/try-comercial.tgz`. Hace `npm ci`, `migrate deploy` y `build`, cambia `current`, recarga PM2 y, si `/login` no responde, vuelve a la versión anterior.
+
 ## Decisiones y pendientes
 
 - Auth.js con credenciales locales de desarrollo y Google opcional; PostgreSQL + Prisma como almacenamiento principal.
