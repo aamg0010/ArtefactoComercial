@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "node scripts/run-typescript.cjs scripts/run-e2e.ts",
     "research:batch": "node scripts/run-typescript.cjs scripts/research-batch.ts",
+    "prospect:daily": "node scripts/run-typescript.cjs scripts/prospect-daily.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",

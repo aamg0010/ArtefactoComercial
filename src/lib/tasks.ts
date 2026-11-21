@@ -5,6 +5,8 @@ import { isSuppressed } from './suppression';
 export async function completeTask(prisma: PrismaClient, taskId: string, result: string, authorId?: string) {
   return prisma.$transaction(async (tx) => {
     const current = await tx.task.findUniqueOrThrow({ where: { id: taskId } }); if (current.status !== 'PENDING') throw new Error('La tarea ya fue procesada.');
+    const company = await tx.company.findUniqueOrThrow({ where: { id: current.companyId } });
+    if (company.acceptanceStatus !== 'ACCEPTED') throw new Error('Empresa pendiente de aceptar o descartada.');
     const task = await tx.task.update({ where: { id: taskId }, data: { status: TaskStatus.COMPLETED, completedAt: new Date(), result }, include: { companyCadence: true, cadenceStep: true } });
     await tx.activity.create({ data: { companyId: task.companyId, taskId: task.id, authorId, type: task.type === 'CALL' ? 'CALL' : task.type === 'FOLLOW_UP' ? 'NOTE' : 'EMAIL', result } });
     const stage = result === 'Reunión agendada' ? 'MEETING' : result === 'No interesado' ? 'LOST' : ['Contactado', 'Interesado'].includes(result) ? 'CONTACTING' : undefined; if (stage) await tx.company.update({ where: { id: task.companyId }, data: { pipelineStage: stage } });

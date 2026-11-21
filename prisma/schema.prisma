@@ -61,6 +61,11 @@ enum ScriptStatus {
   BORRADOR
   APPROVED
 }
+enum CompanyAcceptanceStatus {
+  PENDING
+  ACCEPTED
+  DISCARDED
+}
 model User {
   id String @id @default(cuid())
   name String?
@@ -140,9 +145,17 @@ model Company {
   suppressions SuppressionList[]
   scores Score[]
   aiRuns AiRun[]
+  address String?
+  detectedAt DateTime?
+  researchQueuedAt DateTime?
+  discoveryRunId String?
+  discoveryRun SourceRun? @relation(fields: [discoveryRunId], references: [id], onDelete: SetNull)
+  sourceIdentities CompanySource[]
+  acceptanceStatus CompanyAcceptanceStatus @default(ACCEPTED)
+  evidence CompanyEvidence[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@unique([normalizedName, country])
+  @@unique([normalizedName, country, city])
   @@index([normalizedDomain])
 }
 model Contact {
@@ -296,10 +309,83 @@ model SuppressionList {
   email String? @unique
   phone String? @unique
   companyId String?
+  domain String?
+  companyName String?
+  city String?
+  country Country?
   reason String
   createdAt DateTime @default(now())
-  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   @@index([companyId])
+}
+
+model SearchProfile {
+  id String @id @default(cuid())
+  name String
+  active Boolean @default(false)
+  country Country @default(ES)
+  provinces String[]
+  comarcas String[]
+  municipalities String[]
+  keywords String[]
+  cnaeCodes String[]
+  productLine String
+  source String @default("google-places")
+  sources String[] @default([])
+  maxResults Int @default(10)
+  csvCandidates Json?
+  runs SourceRun[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SourceRun {
+  id String @id @default(cuid())
+  profileId String
+  profile SearchProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  source String
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+  status String @default("RUNNING")
+  queries Json
+  candidates Int @default(0)
+  created Int @default(0)
+  duplicates Int @default(0)
+  suppressed Int @default(0)
+  errors Int @default(0)
+  matches Json
+  errorCodes Json
+  companies Company[]
+  @@index([profileId, startedAt])
+}
+
+model CompanySource {
+  id String @id @default(cuid())
+  companyId String?
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  source String
+  sourceRef String
+  blocked Boolean @default(false)
+  sourceUrl String?
+  attribution String?
+  observedAt DateTime @default(now())
+  @@unique([source, sourceRef])
+  @@index([companyId])
+}
+
+model CompanyEvidence {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  kind String
+  data Json
+  confirmedBy String
+  createdAt DateTime @default(now())
+}
+
+model SourceThrottle {
+  id String @id
+  availableAt DateTime @default(now())
 }
 
 model AiRun {

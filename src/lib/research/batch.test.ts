@@ -15,7 +15,7 @@ it('investiga de tres en tres, pausa entre lotes y no repite las fichas hechas a
   expect(maximum).toBe(3); expect(pause).toHaveBeenCalledWith(1000); expect(pause).toHaveBeenCalledTimes(1);
   expect(await runResearchBatch(db, { investigate, pause })).toEqual({ attempted: 0, succeeded: 0, failed: 0 });
   expect(investigate).toHaveBeenCalledTimes(5);
-  expect(findMany).toHaveBeenCalledWith({ where: { researchReports: { none: { origin: 'AI' } } }, select: { id: true }, orderBy: { id: 'asc' } });
+  expect(findMany).toHaveBeenCalledWith({ where: { acceptanceStatus: 'ACCEPTED', researchReports: { none: { origin: 'AI' } } }, select: { id: true }, orderBy: { id: 'asc' } });
 });
 it('un error en una empresa no cancela las otras del lote', async () => {
   const db = { company: { findMany: vi.fn().mockResolvedValue([{ id: 'a' }, { id: 'b' }]) } } as unknown as PrismaClient;

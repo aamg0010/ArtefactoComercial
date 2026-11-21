@@ -34,6 +34,7 @@ async function main() {
       db.activity.deleteMany(), db.task.deleteMany(), db.companyCadence.deleteMany(),
       db.suppressionList.deleteMany(), db.company.deleteMany(),
       db.cadenceStep.deleteMany(), db.cadence.deleteMany(),
+      db.companySource.deleteMany(), db.sourceRun.deleteMany(), db.searchProfile.deleteMany(),
     ]);
   } finally {
     await db.$disconnect();
