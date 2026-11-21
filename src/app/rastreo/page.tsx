@@ -37,26 +37,26 @@ export default async function Prospecting({ searchParams }: { searchParams: { er
     <button name="action" value="save">{profile ? 'Guardar cambios' : 'Crear perfil'}</button>
   </form>;
   return <main className="mx-auto max-w-6xl space-y-6 p-5">
-    <h1 className="text-2xl font-bold">Rastreo</h1>
+    <h1 className="page-title">Rastreo</h1>
     {prospectingSimulated() && <p role="status" className="bg-amber-100 p-3">Rastreo en modo simulado</p>}
-    <p>Sin clave, sólo Google se simula. OpenStreetMap consulta datos reales públicos. <a className="underline" href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">{osmAttribution}</a></p>
+    <p>Sin clave, sólo Google se simula. OpenStreetMap consulta datos reales públicos. <a className="font-medium hover:underline" href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">{osmAttribution}</a></p>
     {searchParams.error && <p role="alert">No se pudo completar la operación. Revisa los campos, permisos y el historial.</p>}
     {searchParams.done && <p role="status">Operación completada. Consulta el historial para ver los resultados.</p>}
-    <section aria-label="Nuevo perfil" className="rounded bg-white p-4"><h2 className="text-lg font-semibold">Nuevo perfil</h2>{manage ? editor() : <p>Sólo administración puede crear o editar perfiles.</p>}</section>
-    <section aria-label="Perfiles"><h2 className="text-lg font-semibold">Perfiles de búsqueda</h2>{profiles.map(profile => <article aria-label={profile.name} key={profile.id} className="my-3 rounded bg-white p-4">
+    <section aria-label="Nuevo perfil" className="card p-4"><h2 className="text-lg font-semibold">Nuevo perfil</h2>{manage ? editor() : <p>Sólo administración puede crear o editar perfiles.</p>}</section>
+    <section aria-label="Perfiles"><h2 className="text-lg font-semibold">Perfiles de búsqueda</h2>{profiles.map(profile => <article aria-label={profile.name} key={profile.id} className="my-3 card p-4">
       <h3 className="font-semibold">{profile.name}</h3><p>{profile.active ? 'Activo' : 'Inactivo'} · {(profile.sources.length ? profile.sources : [profile.source]).join(' + ')} · {profile.country} · Máximo {profile.maxResults}</p>
       <p>{profile.municipalities.join(', ')} · {profile.keywords.join(', ')}</p>
       <form action={prospectingAction} className="my-2 flex gap-2"><input type="hidden" name="profileId" value={profile.id}/><button name="action" value="toggle" disabled={!manage}>{profile.active ? 'Desactivar' : 'Activar'}</button><button name="action" value="run" disabled={!profile.active || session?.user?.role === 'DIRECTOR'}>Ejecutar ahora</button></form>
       {manage && <details><summary>Editar perfil</summary>{editor(profile)}</details>}
     </article>)}</section>
-    <section aria-label="Detectadas hoy" className="rounded bg-white p-4"><h2 className="text-lg font-semibold">Detectadas hoy ({readyCount + pendingCount}) · {day}</h2>
+    <section aria-label="Detectadas hoy" className="card p-4"><h2 className="text-lg font-semibold">Detectadas hoy ({readyCount + pendingCount}) · {day}</h2>
       {(['ACCEPTED', 'PENDING'] as const).map(status => {
         const rows = companies.filter(company => company.acceptanceStatus === status); const label = status === 'ACCEPTED' ? 'Listas para trabajar' : 'Pendientes de aceptar';
         const count = status === 'ACCEPTED' ? readyCount : pendingCount;
-        return <section key={status} aria-label={label}><h3 className="font-semibold">{label} ({count})</h3>{count > rows.length && <p>Se muestran las 200 más recientes de este grupo.</p>}<ul>{rows.map(company => <li key={company.id}><Link className="underline" prefetch={false} href={`/empresas/${company.id}`}>{company.name}</Link> · {company.city ?? 'Ubicación por verificar'} · {company.source} · {company.researchQueuedAt ? 'Investigación en cola' : status === 'PENDING' ? 'Revisión humana requerida' : 'Sin investigación pendiente'} {company.sourceIdentities.filter(source => source.attribution).map(source => <a key={source.id} className="ml-2 underline" href="https://www.openstreetmap.org/copyright">{source.attribution}</a>)}</li>)}</ul></section>;
+        return <section key={status} aria-label={label}><h3 className="font-semibold">{label} ({count})</h3>{count > rows.length && <p>Se muestran las 200 más recientes de este grupo.</p>}<ul>{rows.map(company => <li key={company.id}><Link className="font-medium hover:underline" prefetch={false} href={`/empresas/${company.id}`}>{company.name}</Link> · {company.city ?? 'Ubicación por verificar'} · {company.source} · {company.researchQueuedAt ? 'Investigación en cola' : status === 'PENDING' ? 'Revisión humana requerida' : 'Sin investigación pendiente'} {company.sourceIdentities.filter(source => source.attribution).map(source => <a key={source.id} className="ml-2 font-medium hover:underline" href="https://www.openstreetmap.org/copyright">{source.attribution}</a>)}</li>)}</ul></section>;
       })}
     </section>
-    <section aria-label="Historial de ejecuciones" className="overflow-x-auto rounded bg-white p-4"><h2 className="text-lg font-semibold">Historial de ejecuciones</h2>
+    <section aria-label="Historial de ejecuciones" className="overflow-x-auto card p-4"><h2 className="text-lg font-semibold">Historial de ejecuciones</h2>
       <table className="w-full text-left"><thead><tr>{['Perfil / fuente', 'Inicio / fin', 'Estado', 'Candidatas', 'Nuevas', 'Duplicadas', 'Suprimidas', 'Errores', 'Consultas / coincidencias'].map(label => <th key={label}>{label}</th>)}</tr></thead>
         <tbody>{runs.map(run => <tr key={run.id}><td>{run.profile.name} · {run.source}</td><td>{run.startedAt.toISOString()}<br/>{run.finishedAt?.toISOString() ?? 'En curso'}</td><td>{run.status}</td><td>{run.candidates}</td><td>{run.created}</td><td>{run.duplicates}</td><td>{run.suppressed}</td><td>{run.errors}</td><td><details><summary>Ver registro</summary><pre className="whitespace-pre-wrap text-xs">{JSON.stringify({ queries: run.queries, matches: run.matches, errors: run.errorCodes }, null, 2)}</pre></details></td></tr>)}</tbody>
       </table>

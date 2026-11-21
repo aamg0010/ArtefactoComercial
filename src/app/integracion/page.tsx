@@ -22,18 +22,18 @@ export default async function IntegrationPage() {
   const errors = await prisma.syncOutbox.findMany({ where: { status: { in: ['FAILED', 'PENDING'] }, lastError: { not: null } }, orderBy: { updatedAt: 'desc' }, take: 20 });
   const linked = await prisma.company.count({ where: { trygestionEmpresaId: { not: null } } });
   return <main className="mx-auto max-w-5xl space-y-5 p-5">
-    <h1 className="text-2xl font-bold">Integración con trygestión</h1>
+    <h1 className="page-title">Integración con trygestión</h1>
     <p role="status">{status}</p>
-    <p>Empresas enlazadas con trygestión: {linked}</p>
-    <section aria-label="Cola de sincronización"><h2 className="text-xl">Cola de sincronización</h2>
-      <ul>{statusLabels.map(([value, label]) => <li key={value}>{label}: <span data-status={value}>{counts.find(row => row.status === value)?._count ?? 0}</span></li>)}</ul>
+    <p className="font-display text-sm text-slate-600">Empresas enlazadas con trygestión: <span className="font-semibold text-try-700">{linked}</span></p>
+    <section aria-label="Cola de sincronización" className="card"><h2 className="font-display text-lg font-semibold">Cola de sincronización</h2>
+      <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">{statusLabels.map(([value, label]) => <li key={value} className="rounded-xl border border-slate-200 bg-try-50/40 p-3 font-display"><span className="block text-xs uppercase tracking-wide text-slate-500">{label}</span><span data-status={value} className="text-2xl font-semibold text-try-800">{counts.find(row => row.status === value)?._count ?? 0}</span></li>)}</ul>
     </section>
     <div className="flex gap-4">
       <form action={processNow}><button disabled={!client?.enabled}>Procesar ahora</button></form>
-      <form action={retryNow}><button>Reintentar fallidos</button></form>
+      <form action={retryNow}><button className="btn-secondary">Reintentar fallidos</button></form>
     </div>
-    <section aria-label="Últimos errores"><h2 className="text-xl">Últimos errores</h2>
-      {errors.length === 0 ? <p>Sin errores.</p> : <ul>{errors.map(error => <li key={error.id}>{kindLabels[error.kind] ?? error.kind} · {error.entityId} · {error.status === 'FAILED' ? 'fallido' : 'reintentará'} · intentos {error.attempts} · {error.lastError}</li>)}</ul>}
+    <section aria-label="Últimos errores" className="card"><h2 className="font-display text-lg font-semibold">Últimos errores</h2>
+      {errors.length === 0 ? <p className="mt-2 font-display text-sm text-slate-500">Sin errores.</p> : <ul className="mt-3 space-y-1 font-display text-sm">{errors.map(error => <li key={error.id}>{kindLabels[error.kind] ?? error.kind} · {error.entityId} · {error.status === 'FAILED' ? 'fallido' : 'reintentará'} · intentos {error.attempts} · {error.lastError}</li>)}</ul>}
     </section>
   </main>;
 }
