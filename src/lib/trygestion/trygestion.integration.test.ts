@@ -277,6 +277,19 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     await expect(sendTaskEmail(db, { ...input, body: 'Texto cambiado' }, { env, client: client() })).rejects.toThrow('EMAIL_CONTENT_CHANGED');
   });
 
+  it('si la empresa no tiene email, el destinatario aprobado se guarda como su email corporativo', async () => {
+    const local = await company({});
+    const script = await db.script.create({ data: { companyId: local.id, author: 'test', content: {}, status: 'APPROVED' } });
+    const task = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Email día 1', scriptId: script.id } });
+    const input = { taskId: task.id, userId, approved: true, to: 'Info@Sin-Email.test', subject: 'Hola', body: 'Texto' };
+    expect(await sendTaskEmail(db, input, { env, client: client() })).toEqual({ sent: true, duplicate: false });
+    expect((await db.company.findUniqueOrThrow({ where: { id: local.id } })).email).toBe('info@sin-email.test');
+    expect(await db.auditLog.count({ where: { entityId: local.id, action: 'EMAIL_ADDED_FROM_MI_DIA' } })).toBe(1);
+    expect(await db.syncOutbox.count({ where: { entityId: local.id } })).toBeGreaterThan(0);
+    const task2 = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Email día 6', scriptId: script.id } });
+    await expect(sendTaskEmail(db, { ...input, taskId: task2.id, to: 'otra@sin-email.test' }, { env, client: client() })).rejects.toThrow('EMAIL_RECIPIENT_NOT_COMPANY_CONTACT');
+  });
+
   it('no envía emails a una empresa suprimida ni si el transporte no es trygestión', async () => {
     const local = await company({ email: 'info@suprimida.test' });
     const script = await db.script.create({ data: { companyId: local.id, author: 'test', content: {}, status: 'APPROVED' } });

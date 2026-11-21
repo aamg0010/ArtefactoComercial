@@ -2,7 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { isSuppressed } from '../suppression';
-import { enqueue } from './outbox';
+import { enqueue, enqueueCompany } from './outbox';
 import { TrygestionClient, TrygestionError } from './client';
 
 const tokenShape = z.object({ companyId: z.string(), expires: z.number() });
@@ -43,7 +43,16 @@ export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { e
   const company = task.company;
   if (task.status !== 'PENDING' || task.type !== 'EMAIL' || company.acceptanceStatus !== 'ACCEPTED' || task.script?.status !== 'APPROVED') throw new TrygestionError('EMAIL_TASK_NOT_APPROVED');
   const recipient = input.to.toLowerCase(); const contacts = company.contacts.filter(c => c.email?.toLowerCase() === recipient);
-  if (company.email?.toLowerCase() !== recipient && !contacts.length) throw new TrygestionError('EMAIL_RECIPIENT_NOT_COMPANY_CONTACT');
+  if (company.email?.toLowerCase() !== recipient && !contacts.length) {
+    // Si la empresa todavía no tiene ningún email, el que escribe y aprueba el comercial pasa a ser su email corporativo.
+    const sinEmail = !company.email?.trim() && !company.contacts.some(c => c.email?.trim());
+    if (!sinEmail) throw new TrygestionError('EMAIL_RECIPIENT_NOT_COMPANY_CONTACT');
+    await db.$transaction(async tx => {
+      await tx.company.update({ where: { id: company.id }, data: { email: recipient } });
+      await tx.auditLog.create({ data: { userId: user.id, entityType: 'Company', entityId: company.id, action: 'EMAIL_ADDED_FROM_MI_DIA' } });
+      await enqueueCompany(tx, company.id);
+    });
+  }
   if (contacts.some(c => c.requiresConsent && c.consentStatus !== 'GRANTED')) throw new TrygestionError('EMAIL_CONSENT_REQUIRED');
   if (/\[(?:TELÉFONO|WEB)\]/i.test(input.body)) throw new TrygestionError('EMAIL_RESOLVE_VARIABLES');
   if (await isSuppressed(db, company.id)) throw new TrygestionError('COMPANY_SUPPRESSED');
