@@ -1,2 +1,5 @@
 *.sql text eol=lf working-tree-encoding=UTF-8
 *.prisma text eol=lf working-tree-encoding=UTF-8
+*.sh text eol=lf
+deploy/plesk/htaccess text eol=lf
+deploy/plesk/cron.txt text eol=lf

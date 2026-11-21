@@ -1,0 +1,13 @@
+# try! Comercial: todo el tráfico va a la app Node.js (pm2: try-comercial, 127.0.0.1:3041)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+  RewriteRule ^(.*)$ http://127.0.0.1:3041/$1 [P,L,QSA]
+</IfModule>
+<IfModule mod_headers.c>
+  RequestHeader set X-Forwarded-Proto "https"
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
