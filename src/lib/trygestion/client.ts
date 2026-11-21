@@ -3,7 +3,7 @@ import { normalizeDomain, normalizeText } from '../normalization';
 import { normalizedBusinessName, normalizedNif } from '../prospecting/deduplication';
 
 export class TrygestionError extends Error {
-  constructor(public readonly code: string, public readonly status = 0) { super(code); this.name = 'TrygestionError'; }
+  constructor(public readonly code: string, public readonly status = 0, public readonly details?: Record<string, unknown>) { super(code); this.name = 'TrygestionError'; }
 }
 export function trygestionConfiguration(env: Record<string, string | undefined> = process.env) {
   const url = env.TRYGESTION_URL?.trim(); const token = env.TRYGESTION_TOKEN?.trim();
@@ -49,30 +49,53 @@ export class TrygestionClient {
         ...(data === undefined ? {} : { body: JSON.stringify(data) }),
       });
     } catch { throw new TrygestionError('NETWORK_OR_TIMEOUT'); }
-    if (!response.ok) { await response.body?.cancel(); throw new TrygestionError(response.status === 401 ? 'UNAUTHORIZED' : `HTTP_${response.status}`, response.status); }
+    if (!response.ok) {
+      let details: Record<string, unknown> | undefined;
+      try { const text = (await response.text()).slice(0, 4000); const parsed: unknown = JSON.parse(text); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) details = parsed as Record<string, unknown>; } catch { details = undefined; }
+      throw new TrygestionError(response.status === 401 ? 'UNAUTHORIZED' : `HTTP_${response.status}`, response.status, details);
+    }
     try {
       const body: unknown = response.status === 204 ? { ok: true } : await response.json();
       return schema.parse(unwrap(body, key));
     } catch { throw new TrygestionError('INVALID_RESPONSE', response.status); }
   }
   estado() { return this.request('/comercial/estado', z.object({ tenant: z.union([z.string(), z.number(), z.record(z.unknown())]), smtp: z.boolean(), ia: z.boolean(), googleCalendar: z.boolean(), etapas: z.array(etapaSchema) })); }
+  private empresasCache: z.infer<typeof empresaSchema>[] | null = null;
+  /** trygestión only filters `search` by name, so the tenant list is read once per client and matched locally. */
+  async listarEmpresas() {
+    this.empresasCache ??= await this.request('/empresas', z.array(empresaSchema), 'GET', undefined, 'empresas');
+    return this.empresasCache;
+  }
   async buscarEmpresa(input: { cif?: string | null; web?: string | null; nombre: string }) {
-    const terms = [...new Set([normalizedNif(input.cif), normalizeDomain(input.web), normalizedBusinessName(input.nombre)].filter((value): value is string => Boolean(value)))];
-    for (const term of terms) {
-      const rows = await this.request(`/empresas?search=${encodeURIComponent(term)}`, z.array(empresaSchema), 'GET', undefined, 'empresas');
-      const find = (predicate: (row: z.infer<typeof empresaSchema>) => boolean) => {
-        const matches = rows.filter(predicate); if (matches.length > 1) throw new TrygestionError('AMBIGUOUS_COMPANY_MATCH'); return matches[0];
-      };
-      const match = (normalizedNif(input.cif) ? find(row => normalizedNif(row.cif) === normalizedNif(input.cif)) : undefined) ??
-        (normalizeDomain(input.web) ? find(row => normalizeDomain(row.web) === normalizeDomain(input.web)) : undefined) ??
-        find(row => normalizedBusinessName(row.nombre) === normalizedBusinessName(input.nombre));
-      if (match) return match;
-    }
-    return null;
+    const rows = await this.listarEmpresas();
+    const find = (predicate: (row: z.infer<typeof empresaSchema>) => boolean) => {
+      const matches = rows.filter(predicate); if (matches.length > 1) throw new TrygestionError('AMBIGUOUS_COMPANY_MATCH'); return matches[0];
+    };
+    const nif = normalizedNif(input.cif); const domain = normalizeDomain(input.web); const name = normalizedBusinessName(input.nombre);
+    return (nif ? find(row => normalizedNif(row.cif) === nif) : undefined)
+      ?? (domain ? find(row => normalizeDomain(row.web) === domain) : undefined)
+      ?? (name ? find(row => normalizedBusinessName(row.nombre) === name) : undefined)
+      ?? null;
   }
   empresa(id: string) { return this.request(`/empresas/${encodeURIComponent(id)}`, empresaSchema); }
-  crearEmpresa(data: EmpresaInput, key?: string) { return this.request('/empresas', linkedSchema, 'POST', data, undefined, key); }
-  actualizarEmpresa(id: string, data: Partial<EmpresaInput>, key?: string) { return this.request(`/empresas/${encodeURIComponent(id)}`, acknowledgement, 'PUT', data, undefined, key); }
+  async crearEmpresa(data: EmpresaInput, key?: string) {
+    try {
+      const created = await this.request('/empresas', linkedSchema, 'POST', data, undefined, key);
+      this.empresasCache = null; return created;
+    } catch (error) {
+      // trygestión rejects a repeated CIF and returns the existing company: link to it instead of failing.
+      const existing = error instanceof TrygestionError && error.status === 400 && error.details?.code === 'DUPLICATE_CIF' ? error.details.empresaExistenteId : undefined;
+      if (typeof existing === 'string' || typeof existing === 'number') return { id: String(existing), linkedExisting: true };
+      throw error;
+    }
+  }
+  /** PUT /empresas/:id overwrites every column, so the full current row is always sent back with the changes. */
+  actualizarEmpresa(current: z.infer<typeof empresaSchema>, changes: Partial<EmpresaInput>, key?: string) {
+    const pick = (field: string) => (current as Record<string, unknown>)[field] ?? null;
+    const body = { nombre: current.nombre, cif: pick('cif'), direccion: pick('direccion'), ciudad: pick('ciudad'), telefono: pick('telefono'), email: pick('email') || null, web: pick('web') || null, sector: pick('sector'), notas: pick('notas'), ...changes };
+    this.empresasCache = null;
+    return this.request(`/empresas/${encodeURIComponent(current.id)}`, acknowledgement, 'PUT', body, undefined, key);
+  }
   async buscarContacto(data: ContactoInput) {
     const rows = await this.request(`/contactos?empresa_id=${encodeURIComponent(data.empresa_id)}`, z.array(contactSchema), 'GET', undefined, 'contactos');
     return rows.find(row => row.empresa_id === data.empresa_id && (data.email ? row.email?.toLowerCase() === data.email.toLowerCase() : normalizeText(row.nombre) === normalizeText(data.nombre) && (row.telefono ?? '') === (data.telefono ?? ''))) ?? null;
@@ -84,9 +107,16 @@ export class TrygestionClient {
     return rows.find(row => row.empresa_id === empresaId && row.titulo === titulo) ?? null;
   }
   crearOportunidad(data: OportunidadInput, key?: string) { return this.request('/pipeline/oportunidades', linkedSchema, 'POST', data, undefined, key); }
-  actualizarOportunidad(id: string, probabilidad: number, key?: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}`, acknowledgement, 'PUT', { probabilidad }, undefined, key); }
+  oportunidad(id: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}`, opportunitySchema); }
+  /** PUT /pipeline/oportunidades/:id nulls the fields it is not sent (empresa, contacto, responsable…), so the current row is merged. */
+  async actualizarOportunidad(id: string, probabilidad: number, key?: string) {
+    const current = await this.oportunidad(id) as Record<string, unknown>;
+    const keep = ['titulo', 'descripcion', 'empresa_id', 'contacto_id', 'etapa_id', 'valor_estimado', 'fecha_cierre_estimada', 'responsable_id', 'cotizacion_id', 'proyecto_id', 'categoria'];
+    const body = Object.fromEntries(keep.map(field => [field, current[field] ?? null]));
+    return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}`, acknowledgement, 'PUT', { ...body, probabilidad }, undefined, key);
+  }
   cambiarEtapa(id: string, etapa_id: string, key?: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}/etapa`, acknowledgement, 'PUT', { etapa_id }, undefined, key); }
-  cambiarEstado(id: string, estado: 'ganada' | 'perdida', motivo?: string, key?: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}/estado`, acknowledgement, 'PUT', { estado, ...(motivo ? { motivo } : {}) }, undefined, key); }
+  cambiarEstado(id: string, estado: 'ganada' | 'perdida', motivo?: string, key?: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}/estado`, acknowledgement, 'PUT', { estado, ...(estado === 'perdida' && motivo ? { motivo_perdida: motivo } : {}) }, undefined, key); }
   crearActividad(id: string, data: ActividadInput, key?: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}/actividades`, linkedSchema, 'POST', data, undefined, key); }
   crearEvento(data: EventoInput, key?: string) { return this.request('/eventos', linkedSchema, 'POST', data, undefined, key); }
   enviarEmail(data: EmailInput) { return this.request('/comercial/email/enviar', acknowledgement, 'POST', data, undefined, data.externalRef); }

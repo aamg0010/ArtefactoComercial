@@ -22,4 +22,9 @@ export const e2eEnvironment = {
   ANTHROPIC_API_KEY: '',
   OPENAI_API_KEY: '',
   GOOGLE_PLACES_API_KEY: '',
+  // Local trygestión test double started by e2e/fase5.spec.ts (never the real service).
+  TRYGESTION_URL: 'http://127.0.0.1:3199/api',
+  TRYGESTION_TOKEN: 'trygestion-local-test-token',
+  TRYGESTION_STAGE_MAP: '',
+  EMAIL_TRANSPORT: '',
 };

@@ -13,7 +13,7 @@ export async function completeTask(prisma: PrismaClient, taskId: string, result:
     const activity = await tx.activity.create({ data: { companyId: task.companyId, taskId: task.id, authorId, type: task.type === 'CALL' ? 'CALL' : task.type === 'FOLLOW_UP' ? 'NOTE' : 'EMAIL', result } });
     await enqueueCompany(tx, company.id);
     await enqueue(tx, 'ACTIVITY', activity.id, { companyId: company.id });
-    if (result === 'Reunión agendada') await enqueue(tx, 'EVENT', activity.id, { companyId: company.id, event: meeting ? { titulo: `Reunión con ${company.name}`, descripcion: task.title, fecha_inicio: meeting.date, fecha_fin: meeting.date, hora: meeting.time, tipo: 'reunion', ambito: 'externo', ubicacion: meeting.location ?? '', entidad_externa: company.name } : null });
+    if (result === 'Reunión agendada' && meeting) await enqueue(tx, 'EVENT', activity.id, { companyId: company.id, event: { titulo: `Reunión con ${company.name}`, descripcion: task.title, fecha_inicio: meeting.date, fecha_fin: meeting.date, hora: meeting.time, tipo: 'reunion', ambito: 'externo', ubicacion: meeting.location ?? '', entidad_externa: company.name } });
     if (result === 'Baja') {
       const contacts = await tx.contact.findMany({ where: { companyId: company.id } });
       await enqueue(tx, 'SUPPRESSION', company.id, { companyId: company.id, emails: [company.email, ...contacts.map(contact => contact.email)].filter(Boolean), domains: [normalizeDomain(company.website)].filter(Boolean), motivo: 'Baja solicitada' }, activity.id);

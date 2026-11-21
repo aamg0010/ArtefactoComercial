@@ -201,8 +201,25 @@ La migración `20261121160000_phase4_prospecting` se genera con `migrate diff`, 
 
 La migración `20261121180000_osm_acceptance`, también generada con `migrate diff` sin BOM, añade estados de aceptación, evidencias, fuentes múltiples, atribución y control de Overpass. Migra los perfiles antiguos a una lista de fuentes y los tres ejemplos a OSM+Google; las referencias Google-only antiguas sin datos propios pasan a pendientes (las ya perdidas, a descartadas). Vitest prueba Overpass con HTTP simulado, etiquetas, serialización/pausa real en PostgreSQL, deduplicación entre fuentes y aceptación/procedencia/exclusión. El E2E crea una referencia Google ficticia exclusivamente en `try_comercial_e2e` y la acepta manualmente sin API ni red externa.
 
+## Fase 5: integración con trygestión
+
+La especificación aprobada está en [`docs/INTEGRACION_TRYGESTION.md`](docs/INTEGRACION_TRYGESTION.md). Resumen del lado de esta app:
+
+- **Qué se envía:** todas las empresas aceptadas (y la carga inicial de las existentes) se crean en trygestión como empresa + contactos + oportunidad del Pipeline en la etapa *Prospecto*. Antes de crear se busca un cliente existente por CIF, dominio web o nombre normalizado; si existe, se enlaza y **solo** se añade/actualiza la línea `Origen: try! Comercial · prospecto · prioridad X` en `notas`. Después se envían llamadas, emails y notas (actividades del Pipeline), reuniones con fecha y hora (eventos → Google Calendar), cambios de etapa, ganado/perdido (`motivo_perdida`) y bajas (supresión por email y dominio).
+- **Contratos reales:** el cliente (`src/lib/trygestion/client.ts`) está ajustado al código en producción: `PUT /empresas/:id` y `PUT /pipeline/oportunidades/:id` sobrescriben columnas, así que siempre se lee el registro y se reenvía completo; `search` solo filtra por nombre, así que la búsqueda se hace en local sobre la lista del tenant; un CIF repetido (`DUPLICATE_CIF`) enlaza con la empresa existente.
+- **Cola `SyncOutbox`:** las acciones de negocio solo encolan (en la misma transacción); `npm run trygestion:sync` procesa por lotes con un único proceso a la vez (advisory lock), reintentos con backoff de 1 min a 2 h y 8 intentos como máximo. Las actividades de una empresa aún no enviada esperan sin fallar. Errores permanentes (401, etapa inexistente, coincidencia ambigua) quedan en *FAILED* y se ven en `/integracion`.
+- **Email e IA:** con `EMAIL_TRANSPORT=trygestion`, *Mi día* muestra “Revisar y enviar email”; el envío exige casilla de aprobación, comprueba supresión y destinatario corporativo, añade el pie de BAJA y un enlace firmado `/baja/<token>`, y es idempotente por tarea. Con `LLM_PROVIDER=trygestion` la IA usa la clave OpenAI del tenant guardada en trygestión (la clave no sale de trygestión).
+
+### Activar
+
+1. En trygestión (cuando esté desplegada su parte: token de servicio y `/api/comercial/*`), crea un token para el tenant y comprueba que el Pipeline tiene sus etapas.
+2. En `.env`: `TRYGESTION_URL`, `TRYGESTION_TOKEN` y, si se quiere, `EMAIL_TRANSPORT=trygestion`, `LLM_PROVIDER=trygestion` y `TRYGESTION_STAGE_MAP`.
+3. `npm run prisma:migrate` (o `npx prisma migrate deploy`), después `npm run trygestion:backfill` (idempotente) y `npm run trygestion:sync`. Repite `trygestion:sync` desde el Programador de tareas (por ejemplo cada 10 minutos) o con el botón *Procesar ahora* de `/integracion` (solo administración).
+
+Sin `TRYGESTION_URL`/`TRYGESTION_TOKEN` nada sale de la app: la cola se acumula y se enviará al activar. Los tests usan un servidor simulado local (`src/lib/trygestion/testing/mock-server.ts`) que reproduce el comportamiento de producción; nunca contactan trygestión real.
+
 ## Decisiones y pendientes
 
 - Auth.js con credenciales locales de desarrollo y Google opcional; PostgreSQL + Prisma como almacenamiento principal.
 - Los datos de `data/prospectos.json` son la fuente de verdad. El seed preserva sus datos sin completarlos ni corregirlos y guarda los cinco guiones como versión 1, autor `seed`.
-- Pendientes: validación con credenciales reales de Google/IA, despliegue PostgreSQL/OAuth, adaptadores comerciales hoy stub, integraciones email/calendario y controles completos de Fase 6. La programación diaria local y la cola persistente ya están implementadas.
+- Pendientes: validación con credenciales reales de Google/IA, despliegue PostgreSQL/OAuth, adaptadores comerciales hoy stub, despliegue de la parte de trygestión (token de servicio y `/api/comercial/*`) y controles completos de Fase 6. La programación diaria local y la cola persistente ya están implementadas.

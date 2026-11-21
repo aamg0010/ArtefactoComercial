@@ -6,7 +6,8 @@ import { enqueueCompany, enqueueContact } from './outbox';
 import { normalizeDomain, normalizeText } from '../normalization';
 import { companyWebsiteCandidate } from '../company-contact';
 
-export const defaultStageMap: Record<string, string> = { DETECTED: 'Prospecto', RESEARCHED: 'Prospecto', CONTACTING: 'Contactado', MEETING: 'Reunión', PROPOSAL: 'Propuesta', NEGOTIATION: 'Negociación', WON: 'Ganado', LOST: 'Perdido' };
+/** Default stages created by trygestión's `POST /pipeline/inicializar-etapas`. Won/lost use PUT …/estado, which picks the final stage. */
+export const defaultStageMap: Record<string, string> = { DETECTED: 'Prospecto', RESEARCHED: 'Prospecto', CONTACTING: 'Contacto inicial', MEETING: 'Contacto inicial', PROPOSAL: 'Propuesta enviada', NEGOTIATION: 'Negociacion' };
 export async function stageId(client: TrygestionClient, stage: string, value = process.env.TRYGESTION_STAGE_MAP) {
   let mapping = defaultStageMap;
   if (value?.trim()) try { mapping = { ...mapping, ...z.record(z.string().min(1)).parse(JSON.parse(value)) }; } catch { throw new TrygestionError('INVALID_STAGE_MAP'); }
@@ -24,18 +25,30 @@ function originNotes(notes: string | null | undefined, priority: string | null) 
   const owned = 'Origen: try! Comercial · prospecto · prioridad ';
   return [...(notes ?? '').split('\n').filter(line => line && !line.startsWith(owned)), `${owned}${priority ?? 'sin asignar'}`].join('\n');
 }
+/** trygestión validates `web` as a full URL (or empty). */
+export function remoteWebsite(value: string | null | undefined) {
+  const candidate = value?.trim(); if (!candidate) return null;
+  try { const url = new URL(/^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`); return ['http:', 'https:'].includes(url.protocol) ? url.toString() : null; } catch { return null; }
+}
+async function linkCompany(db: PrismaClient, id: string, remoteId: string) {
+  const other = await db.company.findFirst({ where: { trygestionEmpresaId: remoteId, id: { not: id } }, select: { id: true } });
+  if (other) throw new TrygestionError('REMOTE_COMPANY_ALREADY_LINKED');
+  await db.company.update({ where: { id }, data: { trygestionEmpresaId: remoteId } });
+}
 async function companyUpsert(db: PrismaClient, id: string, client: TrygestionClient, key: string) {
   let company = await db.company.findUnique({ where: { id }, include: { scores: { orderBy: { createdAt: 'desc' }, take: 1 }, contacts: true } });
   if (!company || company.acceptanceStatus !== 'ACCEPTED') throw new Skipped('COMPANY_NOT_ACCEPTED_OR_DELETED');
   let remote = company.trygestionEmpresaId ? await client.empresa(company.trygestionEmpresaId) : await client.buscarEmpresa({ cif: company.nifNit, web: company.website, nombre: company.name });
   if (!remote) {
-    const created = await client.crearEmpresa({ nombre: company.name, cif: company.nifNit, web: company.website, ciudad: company.city, provincia: company.region, pais: company.country, telefono: company.phone, email: company.email, sector: company.sector, notas: originNotes(null, company.priority) }, `${key}:company`);
-    await db.company.update({ where: { id }, data: { trygestionEmpresaId: created.id } });
-    remote = { id: created.id, nombre: company.name, notas: originNotes(null, company.priority) };
-  } else {
-    await db.company.update({ where: { id }, data: { trygestionEmpresaId: remote.id } });
+    const created = await client.crearEmpresa({ nombre: company.name, cif: company.nifNit, web: remoteWebsite(company.website), ciudad: company.city, provincia: company.region, pais: company.country, telefono: company.phone, email: company.email, sector: company.sector, notas: originNotes(null, company.priority) }, `${key}:company`);
+    await linkCompany(db, id, created.id);
+    // A repeated CIF links to the client that already exists; its data is then treated like any existing client.
+    remote = 'linkedExisting' in created ? await client.empresa(created.id) : { id: created.id, nombre: company.name, notas: originNotes(null, company.priority) };
+  } else await linkCompany(db, id, remote.id);
+  {
     const notes = originNotes(remote.notas, company.priority);
-    if (notes !== (remote.notas ?? '')) await client.actualizarEmpresa(remote.id, { notas: notes }, `${key}:notes`);
+    // Existing clients keep all their data: only the origin line in `notas` is owned by try! Comercial.
+    if (notes !== (remote.notas ?? '')) await client.actualizarEmpresa(remote, { notas: notes }, `${key}:notes`);
   }
   company = await db.company.findUniqueOrThrow({ where: { id }, include: { scores: { orderBy: { createdAt: 'desc' }, take: 1 }, contacts: true } });
   const probability = company.scores[0]?.total ?? ({ A: 70, B: 50, C: 25 }[company.priority ?? ''] ?? 0);
@@ -123,7 +136,7 @@ export async function processSyncOutbox(db: PrismaClient, options: { client?: Tr
         }
         if (error instanceof Skipped) { await db.syncOutbox.update({ where: { id: job.id }, data: { status: 'SKIPPED', lastError: error.message } }); summary.skipped++; continue; }
         const message = error instanceof TrygestionError ? error.code : 'SYNC_PROCESSING_ERROR';
-        const permanent = /^(STAGE_|INVALID_STAGE|MEETING_DATE|AMBIGUOUS_|UNAUTHORIZED)/.test(message) || error instanceof TrygestionError && [400, 403, 404, 422].includes(error.status);
+        const permanent = /^(STAGE_|INVALID_STAGE|MEETING_DATE|AMBIGUOUS_|UNAUTHORIZED|REMOTE_COMPANY_ALREADY_LINKED)/.test(message) || error instanceof TrygestionError && [400, 403, 404, 422].includes(error.status);
         const terminal = permanent || job.attempts + 1 >= 8;
         await db.syncOutbox.update({ where: { id: job.id }, data: { status: terminal ? 'FAILED' : 'PENDING', nextAttemptAt: new Date(now.getTime() + backoffMs(job.attempts + 1)), lastError: message } });
         if (terminal) summary.failed++;
