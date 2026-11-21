@@ -182,7 +182,8 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     const task = await db.task.create({ data: { companyId: local.id, type: 'CALL', title: 'Primera llamada' } });
     await completeTask(db, task.id, 'Reunión agendada', userId, { date: '2026-11-27', time: '10:30', location: 'Oficina del cliente' });
     await drain(local.id);
-    expect(mock.state.activities).toEqual([expect.objectContaining({ tipo: 'llamada', titulo: 'Reunión agendada' })]);
+    expect(mock.state.activities).toEqual([expect.objectContaining({ tipo: 'llamada', titulo: 'Reunión agendada', descripcion: expect.stringContaining('Registrado por Comercial pruebas en try! Comercial.') })]);
+    expect(String(mock.state.events[0].descripcion)).toContain('Agendada por Comercial pruebas desde try! Comercial.');
     expect(mock.state.events).toEqual([expect.objectContaining({ titulo: `Reunión con ${local.name}`, fecha_inicio: '2026-11-27', hora: '10:30', ambito: 'externo', entidad_externa: local.name, ubicacion: 'Oficina del cliente' })]);
     expect(mock.state.opportunities[0].etapa_id).toBe('stage-2');
     const activity = await db.activity.findFirstOrThrow({ where: { taskId: task.id } });

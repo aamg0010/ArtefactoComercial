@@ -112,12 +112,17 @@ async function perform(db: PrismaClient, job: SyncOutbox, client: TrygestionClie
       if (delivery?.status === 'SENT' && delivery.opportunityId) throw new Skipped('EMAIL_ALREADY_RECORDED_REMOTE');
     }
     const type = { CALL: 'llamada', EMAIL: 'email', NOTE: 'nota', MEETING: 'reunion' }[activity.type] as 'llamada' | 'email' | 'nota' | 'reunion';
-    const result = await client.crearActividad(company.trygestionOportunidadId!, { tipo: type, titulo: activity.result ?? 'Actividad comercial', descripcion: activity.body ?? activity.result ?? '', fecha_programada: activity.createdAt.toISOString() }, key);
+    const author = activity.authorId ? await db.user.findUnique({ where: { id: activity.authorId }, select: { name: true, email: true } }) : null;
+    const signature = author ? `Registrado por ${author.name || author.email} en try! Comercial.` : 'Registrado en try! Comercial.';
+    const descripcion = [activity.body ?? activity.result ?? '', signature].filter(Boolean).join('\n');
+    const result = await client.crearActividad(company.trygestionOportunidadId!, { tipo: type, titulo: activity.result ?? 'Actividad comercial', descripcion, fecha_programada: activity.createdAt.toISOString() }, key);
     await db.activity.update({ where: { id: activity.id }, data: { trygestionActividadId: result.id } }); return;
   }
   if (job.kind === 'EVENT' && activity) {
     if (activity.trygestionEventoId) return;
     const parsed = eventSchema.safeParse(payload.event); if (!parsed.success) throw new TrygestionError('MEETING_DATE_REQUIRED');
+    const organizer = activity.authorId ? await db.user.findUnique({ where: { id: activity.authorId }, select: { name: true, email: true } }) : null;
+    if (organizer) parsed.data.descripcion = [parsed.data.descripcion, `Agendada por ${organizer.name || organizer.email} desde try! Comercial.`].filter(Boolean).join('\n');
     const result = await client.crearEvento(parsed.data as EventoInput, key);
     await db.activity.update({ where: { id: activity.id }, data: { trygestionEventoId: result.id } });
   }

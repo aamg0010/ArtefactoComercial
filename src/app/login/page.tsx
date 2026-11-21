@@ -1,7 +1,11 @@
 import Image from 'next/image';
+import { AuthError } from 'next-auth';
+import { redirect } from 'next/navigation';
 import { signIn } from '@/auth';
+import { authMode } from '@/lib/trygestion/login';
 
-export default function Login() {
+export default function Login({ searchParams }: { searchParams: { error?: string } }) {
+  const conTrygestion = authMode() === 'trygestion';
   return <main className="relative flex min-h-[calc(100vh-9rem)] items-center justify-center overflow-hidden px-5 py-12">
     <div aria-hidden className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-try-200/50 blur-3xl" />
     <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-lima-300/40 blur-3xl" />
@@ -17,8 +21,9 @@ export default function Login() {
       <section className="p-8 sm:p-10">
         <Image src="/brand/try-company.png" alt="" width={120} height={64} className="mb-6 h-auto w-28 md:hidden" />
         <h1>try! Comercial</h1>
-        <p className="mt-2 font-display text-sm text-slate-500">Accede con tus credenciales.</p>
-        <form className="mt-8 space-y-5" action={async (formData) => { 'use server'; await signIn('credentials', { email: formData.get('email'), password: formData.get('password'), redirectTo: '/' }); }}>
+        <p className="mt-2 font-display text-sm text-slate-500">{conTrygestion ? <>Entra con tu usuario y contraseña de <span className="font-semibold text-try-600">trygestión</span>.</> : 'Accede con tus credenciales.'}</p>
+        {searchParams.error && <p role="alert" className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-2 font-display text-sm text-red-700">{conTrygestion ? 'No se ha podido entrar. Revisa el email y la contraseña de trygestión, o pide acceso a TRY Business Solutions.' : 'Email o contraseña incorrectos.'}</p>}
+        <form className="mt-8 space-y-5" action={async (formData) => { 'use server'; try { await signIn('credentials', { email: formData.get('email'), password: formData.get('password'), redirectTo: '/' }); } catch (error) { if (error instanceof AuthError) redirect('/login?error=1'); throw error; } }}>
           <label className="block">Email<input name="email" type="email" autoComplete="username" required /></label>
           <label className="block">Contraseña<input name="password" type="password" autoComplete="current-password" required /></label>
           <button type="submit" className="w-full py-2.5">Entrar</button>
