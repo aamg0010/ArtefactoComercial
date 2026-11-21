@@ -23,7 +23,13 @@ test('integración: estado de trygestión, procesar la cola y ver la empresa enl
     expect(mock.state.opportunities.every(row => row.etapa_id === 'stage-1')).toBe(true);
     const linked = await db.company.findFirstOrThrow({ where: { trygestionEmpresaId: { not: null } } });
     await page.goto(`/empresas/${linked.id}`);
-    await expect(page.getByText(`En trygestión · ${linked.trygestionEmpresaId}`)).toBeVisible();
+    const section = page.getByRole('region', { name: 'trygestión' });
+    await expect(section).toContainText(linked.trygestionEmpresaId!);
+    await expect(section.getByRole('link', { name: 'Abrir en trygestión ↗' })).toHaveAttribute('href', `https://trygestion.com/empresas?ver=${linked.trygestionEmpresaId}`);
+    await expect(section.getByRole('link', { name: 'Pipeline de trygestión ↗' })).toHaveAttribute('href', 'https://trygestion.com/pipeline');
+    // De trygestión a la app: la ficha de try! Comercial queda enlazada en las notas de la empresa remota.
+    const remote = mock.state.companies.find(row => row.id === linked.trygestionEmpresaId);
+    expect(String(remote?.notas)).toContain(`Ficha en try! Comercial: http://localhost:3100/empresas/${linked.id}`);
   } finally {
     await db.$disconnect(); await mock.close();
   }
