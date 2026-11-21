@@ -9,6 +9,7 @@ import { investigateCompany, generateCompanyScript, approveCompanyScript, applyS
 import { setCompanyCadenceStatus } from './lib/cadence';
 import { isSafeTestDatabase } from './lib/test-database';
 import { completeTask } from './lib/tasks';
+import prospects from '../data/prospectos.json';
 
 const run = promisify(execFile);
 const url = process.env.TEST_DATABASE_URL;
@@ -123,6 +124,45 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     expect(await db.opportunity.count()).toBe(121);
   });
 
+  it('el seed extrae las seis webs y no verifica contactos que sólo tienen web', async () => {
+    for (const [sourceId, domain] of [
+      ['limabril-s-l', 'limabril.com'], ['cooperativa-ganadera-de-caspe', 'ganaderacaspe.com'],
+      ['pastores-grupo-cooperativo', 'grupopastores.coop'], ['grupo-arcoiris', 'grupoarcoiris.com'],
+      ['venta-d-aubert', 'ventadaubert.com'], ['la-calandina-s-coop', 'lacalandina.com'],
+    ]) {
+      expect(await db.company.findUniqueOrThrow({ where: { sourceId } })).toMatchObject({ website: `https://${domain}`, normalizedDomain: domain });
+    }
+    for (const sourceId of ['limabril-s-l', 'pastores-grupo-cooperativo']) {
+      expect(await db.contact.findUniqueOrThrow({ where: { id: `contact-${sourceId}` } })).toMatchObject({ email: null, phone: null, verified: false });
+    }
+  });
+
+  it('import:sheet extrae webs y conserva una web ya informada', async () => {
+    const cases = [
+      ['limabril-s-l', 'limabril.com'], ['cooperativa-ganadera-de-caspe', 'ganaderacaspe.com'],
+      ['pastores-grupo-cooperativo', 'grupopastores.coop'], ['grupo-arcoiris', 'grupoarcoiris.com'],
+      ['venta-d-aubert', 'ventadaubert.com'], ['la-calandina-s-coop', 'lacalandina.com'],
+    ];
+    const rows: string[][] = [['id', 'empresa', 'contacto_corporativo']];
+    for (const [id] of cases) {
+      const original = prospects.find(item => item.id === id)!;
+      const company = await db.company.create({ data: { sourceId: `web-test-${id}`, name: `Prueba ${original.empresa}`, normalizedName: randomUUID(), country: 'ES' } });
+      companyIds.push(company.id);
+      rows.push([company.sourceId!, company.name, original.contacto.texto]);
+    }
+    const existing = await db.company.create({ data: { sourceId: 'web-test-existing', name: 'Web existente', normalizedName: randomUUID(), country: 'ES', website: 'https://elegida.example.test', normalizedDomain: 'elegida.example.test' } });
+    companyIds.push(existing.id); rows.push([existing.sourceId!, existing.name, 'sustituta.example.test']);
+    const file = join(tempDirectory, 'webs.csv');
+    await writeFile(file, rows.map(row => row.map(value => `"${value.replaceAll('"', '""')}"`).join(',')).join('\n'));
+    await runTypescript('scripts/import-sheet.ts', [file]);
+    for (const [id, domain] of cases) {
+      const company = await db.company.findUniqueOrThrow({ where: { sourceId: `web-test-${id}` }, include: { contacts: true } });
+      expect(company).toMatchObject({ website: `https://${domain}`, normalizedDomain: domain });
+      if (id === 'limabril-s-l' || id === 'pastores-grupo-cooperativo') expect(company.contacts[0]).toMatchObject({ email: null, phone: null, verified: false });
+    }
+    expect(await db.company.findUniqueOrThrow({ where: { id: existing.id } })).toMatchObject({ website: 'https://elegida.example.test', normalizedDomain: 'elegida.example.test' });
+  }, 30_000);
+
   it('importa un cambio de estado desde CSV con id', async () => {
     const file = join(tempDirectory, 'state.csv');
     await writeFile(file, 'id,empresa,estado,prioridad,provincia,municipio,comarca,sector,contacto_corporativo,proxima_accion,fecha_proxima_accion\nla-calandina-s-coop,La Calandina S. Coop.,Contactado,A,Teruel,Calanda,Bajo Aragón,Cooperativa,info@lacalandina.com,Llamar,2026-12-01\n');
@@ -142,12 +182,14 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
 
   it('el seed doble conserva el número de tareas y el estado comercial importado', async () => {
     const count = await db.task.count();
+    await db.company.update({ where: { sourceId: 'la-calandina-s-coop' }, data: { website: 'https://web-informada.example.test' } });
     await seed();
     expect(await db.task.count()).toBe(count);
     expect(await db.company.findUniqueOrThrow({ where: { sourceId: 'la-calandina-s-coop' } })).toMatchObject({ pipelineStage: 'MEETING', priority: 'B', nextAction: 'Trabajo comercial', nextActionAt: new Date('2026-12-01T00:00:00Z') });
     expect(await db.company.count()).toBe(56);
     expect(await db.script.count()).toBe(5);
     expect(await db.opportunity.count()).toBe(121);
+    expect((await db.company.findUniqueOrThrow({ where: { sourceId: 'la-calandina-s-coop' } })).website).toBe('https://web-informada.example.test');
   }, 60_000);
 
   it.each(['No contesta', 'Buzón', 'Contactado'])('%s genera el siguiente paso real de Caspe y mantiene ACTIVE', async result => {

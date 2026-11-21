@@ -29,6 +29,12 @@ describe('puntuación determinista', () => {
     expect(() => calculateScore(report(), { comarca: null, hasContact: false }, { ...defaultWeights, sector: -1 })).toThrow();
     expect(() => calculateScore(report(), { comarca: null, hasContact: false }, { sector: 0, size: 0, intent: 0, contact: 0, proximity: 0, crossSell: 0 })).toThrow();
   });
+  it('el factor contacto sin canal directo vale cero y lo explica', () => {
+    const score = calculateScore(report(), { comarca: null, hasContact: false });
+    expect(score.breakdown.find(item => item.factor === 'contact')).toMatchObject({ value: 0, points: 0, reason: 'Sin canal de contacto directo' });
+    const withContact = calculateScore(report(), { comarca: null, hasContact: true });
+    expect(withContact.breakdown.find(item => item.factor === 'contact')).toMatchObject({ value: 1, reason: 'Canal de contacto directo registrado' });
+  });
 });
 
 describe('validación de evidencias', () => {

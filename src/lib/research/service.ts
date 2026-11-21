@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { generateJson } from '../llm';
 import { madridDate } from '../dates';
 import { isSuppressed } from '../suppression';
+import { hasDirectContact } from '../company-contact';
 import { crawlCompanyWebsite } from './crawler';
 import { mockResearch, researchInstructions, researchSchema, researchShape } from './schema';
 import { calculateScore, defaultWeights } from './scoring';
@@ -23,7 +24,7 @@ export async function investigateCompany(db: PrismaClient, companyId: string) {
     schema: researchSchema(sources, catalog.map(item => item.line)),
   }, { db, companyId, purpose: 'research', mockResponse: example });
   const weights = await db.scoringWeights.findUnique({ where: { id: 'default' } }) ?? defaultWeights;
-  const score = calculateScore(report, { comarca: company.comarca, hasContact: Boolean(company.email || company.phone || company.contacts.some(contact => contact.email || contact.phone)) }, weights);
+  const score = calculateScore(report, { comarca: company.comarca, hasContact: hasDirectContact(company) || company.contacts.some(hasDirectContact) }, weights);
   return db.$transaction(async tx => {
     const latest = await tx.researchReport.aggregate({ where: { companyId }, _max: { version: true } });
     return tx.researchReport.create({ data: { companyId, version: (latest._max.version ?? 0) + 1, origin: 'AI', summary: report.summary.text, data: json(report), score: { create: { companyId, ...score, breakdown: json(score.breakdown) } } }, include: { score: true } });

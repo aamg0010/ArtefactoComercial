@@ -1,5 +1,40 @@
 import { expect, test } from '@playwright/test';
-import { e2eEnvironment } from './environment';
+import { e2eDatabaseUrl, e2eEnvironment } from './environment';
+import { PrismaClient } from '@prisma/client';
+
+let offlineCompany: { id: string; website: string | null; normalizedDomain: string | null } | undefined;
+test.beforeAll(async () => {
+  // Keep the existing offline research workflow deterministic after the seed
+  // starts inferring websites. Verify the inferred value before this fixture.
+  const db = new PrismaClient({ datasources: { db: { url: e2eDatabaseUrl } } });
+  try {
+    const company = await db.company.findUniqueOrThrow({ where: { sourceId: 'pretersa-prenavisa' } });
+    expect(company.website).toBe('https://pretersa.com');
+    offlineCompany = { id: company.id, website: company.website, normalizedDomain: company.normalizedDomain };
+    await db.company.update({ where: { id: company.id }, data: { website: null, normalizedDomain: null } });
+  } finally { await db.$disconnect(); }
+});
+test.afterAll(async () => {
+  if (!offlineCompany) return;
+  const db = new PrismaClient({ datasources: { db: { url: e2eDatabaseUrl } } });
+  try {
+    await db.company.update({ where: { id: offlineCompany.id }, data: { website: offlineCompany.website, normalizedDomain: offlineCompany.normalizedDomain } });
+  } finally { await db.$disconnect(); }
+});
+
+test('Limabril muestra su web y no presenta un contacto sin canal como verificado', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email', { exact: true }).fill('comercial@try.company');
+  await page.getByLabel('Contraseña', { exact: true }).fill(e2eEnvironment.SEED_SALES_PASSWORD);
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page).toHaveURL('http://localhost:3100/');
+  await page.getByRole('link', { name: 'Limabril S.L.', exact: true }).click();
+  const data = page.getByRole('region', { name: 'Datos de empresa', exact: true });
+  await expect(data).toContainText('https://limabril.com');
+  await expect(data).toContainText('Sin canal de contacto directo');
+  await expect(data).toContainText('Pendiente de verificar');
+  await expect(data).not.toContainText('Verificado');
+});
 
 test('Pretersa: investigar, puntuar, generar borrador, aprobar y ver tareas', async ({ page }) => {
   await page.goto('/login');

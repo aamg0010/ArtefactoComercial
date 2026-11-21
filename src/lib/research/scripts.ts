@@ -2,6 +2,8 @@ import { z } from 'zod';
 import type { Evidence, Research } from './schema';
 import { unsupportedNames } from './schema';
 
+function sentence(value: string) { return /[.!?…]$/.test(value.trim()) ? value.trim() : `${value.trim()}.`; }
+
 export const generatedScriptShape = z.object({
   producto_principal: z.string(),
   llamada: z.object({ apertura: z.string().min(1), motivo: z.string().min(1), pregunta_clave: z.string().min(1), propuesta_valor: z.string().min(1), objeciones: z.object({ precio: z.string().min(1), ya_tenemos_programa: z.string().min(1), no_es_momento: z.string().min(1), envieme_info: z.string().min(1) }), cierre: z.string().min(1), mensaje_voz: z.string().min(1) }),
@@ -41,7 +43,7 @@ export function mockScript(company: string, product: string, research: Research,
       cierre: '¿Le encaja una conversación de diagnóstico para confirmar si podemos ayudar?',
       mensaje_voz: 'Soy del equipo de try! company. Quería consultar una posible mejora de gestión; le enviaré información sólo si procede por su base legal.',
     },
-    emails: [1, 6, 15].map((dia, index) => ({ dia, asunto: `${index ? 'Seguimiento: ' : ''}gestión en ${company}`, cuerpo: `Buenos días,\nQueremos explorar si ${product} puede ayudar a mejorar la productividad de ${company}. No hemos verificado sus necesidades. ¿Le encaja una conversación para conocer el proceso?${footer}` })),
+    emails: [1, 6, 15].map((dia, index) => ({ dia, asunto: `${index ? 'Seguimiento: ' : ''}gestión en ${company}`, cuerpo: `Buenos días,\n${sentence(`Queremos explorar si ${product} puede ayudar a mejorar la productividad de ${company}`)} No hemos verificado sus necesidades. ¿Le encaja una conversación para conocer el proceso?${footer}` })),
     cadencia: cadence.map(step => ({ ...step, canal: step.canal as 'email' | 'llamada', accion: step.accion.replace(/\s*\((?:emails?\[\d+\]|llamada)\)/gi, '') })),
     fuentes: research.sources.map(source => source.id), nota: 'Propuesta estimada; confirmar las necesidades y el rol del decisor antes de usar.',
   };

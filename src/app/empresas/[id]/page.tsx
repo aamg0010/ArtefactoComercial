@@ -4,6 +4,7 @@ import { companyAction } from './actions';
 import { researchShape } from '@/lib/research/schema';
 import { ScriptView } from '../../mi-dia/script-view';
 import type { GeneratedScript } from '@/lib/research/scripts';
+import { isVerifiedDirectContact } from '@/lib/company-contact';
 
 export const dynamic = 'force-dynamic';
 const factorLabels: Record<string, string> = { sector: 'Encaje de sector', size: 'Tamaño', intent: 'Intención', contact: 'Accesibilidad del contacto', proximity: 'Proximidad geográfica', crossSell: 'Venta cruzada' };
@@ -27,13 +28,13 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
       <p>Web: {company.website ?? company.normalizedDomain ?? 'Sin web registrada'}</p>
       <p>Prioridad actual: {company.priority ?? 'Sin asignar'}</p>
       <p>Próxima acción: {company.nextAction ?? 'Por definir'}</p>
-      <ul>{company.contacts.map(contact => <li key={contact.id}>{contact.fullName} · {contact.email ?? contact.phone ?? 'Contacto pendiente'} · {contact.verified ? 'Verificado' : 'Pendiente de verificar'}</li>)}</ul>
+      <ul>{company.contacts.map(contact => <li key={contact.id}>{contact.fullName} · {contact.email?.trim() || contact.phone?.trim() || 'Sin canal de contacto directo'} · {isVerifiedDirectContact(contact) ? 'Verificado' : 'Pendiente de verificar'}</li>)}</ul>
       {actionForm('research', 'Investigar')}
     </section>
     <section aria-label="Puntuación" className="rounded bg-white p-4">
       <h2 className="text-lg font-semibold">Puntuación</h2>
       {score ? <><p>Puntuación: {score.total}/100 · Prioridad sugerida: {score.suggestedPriority} · Actual: {company.priority ?? 'Sin asignar'}</p>
-        <ul>{(score.breakdown as { factor: string; value: number; weight: number; points: number; reason: string }[]).map(item => <li key={item.factor}>{factorLabels[item.factor]}: {item.points} puntos (factor {item.value}, peso {item.weight}) — {item.reason}</li>)}</ul>
+        <ul>{(score.breakdown as { factor: string; value: number; weight: number; points: number; reason: string }[]).map(item => <li key={item.factor}>{factorLabels[item.factor]}: {item.points} puntos (factor {item.value}, peso {item.weight}) — {item.factor === 'contact' && item.value === 0 ? 'Sin canal de contacto directo' : item.reason}</li>)}</ul>
         {actionForm('priority', 'Aplicar prioridad sugerida')}</> : <p>Investiga la empresa para calcular su puntuación.</p>}
     </section>
     <section aria-label="Investigación" className="rounded bg-white p-4">

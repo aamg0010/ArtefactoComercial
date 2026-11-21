@@ -18,7 +18,7 @@ export function calculateScore(research: Research, company: { comarca: string | 
   const breakdown = Object.entries(factors).map(([key, value]) => {
     const factor = key as keyof Weights;
     z.number().min(0).max(1).parse(value);
-    const reason = factor === 'contact' ? 'Canal de contacto registrado' : factor === 'proximity' ? onsite ? 'Proximidad para soporte in situ' : 'Servicio remoto: factor neutro' : factor === 'crossSell' ? 'Número de líneas recomendadas' : research.factors[factor].reason.text;
+    const reason = factor === 'contact' ? value ? 'Canal de contacto directo registrado' : 'Sin canal de contacto directo' : factor === 'proximity' ? onsite ? 'Proximidad para soporte in situ' : 'Servicio remoto: factor neutro' : factor === 'crossSell' ? 'Número de líneas recomendadas' : research.factors[factor].reason.text;
     return { factor, value, weight: weights[factor], points: Math.round(value * weights[factor] / sum * 10000) / 100, reason };
   });
   const total = Math.round(breakdown.reduce((a, item) => a + item.points, 0));
