@@ -74,7 +74,7 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     expect(String(remote.notas)).toContain('Origen: try! Comercial · prospecto · prioridad A');
     expect(linked.trygestionEmpresaId).toBe(remote.id);
     expect(mock.state.opportunities).toHaveLength(1);
-    expect(mock.state.opportunities[0]).toMatchObject({ empresa_id: remote.id, etapa_id: 'stage-1', estado: 'abierta' });
+    expect(mock.state.opportunities[0]).toMatchObject({ titulo: `Prospección · ${local.name}`, descripcion: `Oportunidad creada desde try! Comercial (ref try-comercial:${local.id}).`, empresa_id: remote.id, etapa_id: 'stage-1', estado: 'abierta' });
     expect(linked.trygestionOportunidadId).toBe(mock.state.opportunities[0].id);
     expect(mock.state.contacts).toEqual([expect.objectContaining({ empresa_id: remote.id, nombre: 'Recepción' })]);
     expect(linked.contacts[0].trygestionContactoId).toBe(mock.state.contacts[0].id);
@@ -91,6 +91,20 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     expect(mock.state.companies[0]).toMatchObject({ nombre: 'Cliente Histórico SA', direccion: 'Calle Mayor 1', ciudad: 'Caspe', telefono: '976000000', email: 'admin@cliente.test', web: 'https://cliente.test', sector: 'Industria' });
     expect(String(mock.state.companies[0].notas).split('\n')).toEqual(['Cliente desde 2020', 'Origen: try! Comercial · prospecto · prioridad B']);
     expect((await db.company.findUniqueOrThrow({ where: { id: local.id } })).trygestionEmpresaId).toBe('cliente-existente');
+  });
+
+  it('reconoce una oportunidad ya creada (por referencia o por el título antiguo) y no la duplica', async () => {
+    const local = await company();
+    await enqueueCompany(db, local.id); await drain(local.id);
+    const remote = mock.state.opportunities[0];
+    await db.company.update({ where: { id: local.id }, data: { trygestionOportunidadId: null } });
+    await enqueueCompany(db, local.id, 'reintento'); await drain(local.id);
+    expect(mock.state.opportunities).toHaveLength(1);
+    Object.assign(remote, { titulo: `Prospección try! Comercial [${local.id}]`, descripcion: null });
+    await db.company.update({ where: { id: local.id }, data: { trygestionOportunidadId: null } });
+    await enqueueCompany(db, local.id, 'reintento-2'); await drain(local.id);
+    expect(mock.state.opportunities).toHaveLength(1);
+    expect((await db.company.findUniqueOrThrow({ where: { id: local.id } })).trygestionOportunidadId).toBe(remote.id);
   });
 
   it('enlaza también por dominio web y por nombre normalizado', async () => {

@@ -18,7 +18,7 @@ const id = z.union([z.string().min(1), z.number()]).transform(String);
 export const empresaSchema = z.object({ id, nombre: z.string(), cif: z.string().nullish(), web: z.string().nullish(), notas: z.string().nullish() }).passthrough();
 const linkedSchema = z.object({ id }).passthrough();
 export const etapaSchema = z.object({ id, nombre: z.string() }).passthrough();
-const opportunitySchema = linkedSchema.extend({ titulo: z.string(), empresa_id: id });
+const opportunitySchema = linkedSchema.extend({ titulo: z.string(), descripcion: z.string().nullish(), empresa_id: id });
 const contactSchema = linkedSchema.extend({ empresa_id: id, nombre: z.string(), email: z.string().nullish(), telefono: z.string().nullish() });
 const acknowledgement = z.object({ id: id.optional(), success: z.boolean().optional(), ok: z.boolean().optional(), messageId: z.string().optional() }).passthrough();
 function unwrap(body: unknown, key?: string): unknown {
@@ -31,7 +31,7 @@ function unwrap(body: unknown, key?: string): unknown {
 }
 export type EmpresaInput = { nombre: string; cif?: string | null; web?: string | null; ciudad?: string | null; provincia?: string | null; pais?: string; telefono?: string | null; email?: string | null; sector?: string | null; notas?: string };
 export type ContactoInput = { empresa_id: string; nombre: string; cargo?: string | null; telefono?: string | null; email?: string | null };
-export type OportunidadInput = { titulo: string; empresa_id: string; contacto_id?: string | null; etapa_id: string; probabilidad: number };
+export type OportunidadInput = { titulo: string; descripcion?: string; empresa_id: string; contacto_id?: string | null; etapa_id: string; probabilidad: number };
 export type ActividadInput = { tipo: 'llamada' | 'email' | 'reunion' | 'nota'; titulo: string; descripcion: string; fecha_programada?: string | null };
 export type EventoInput = { titulo: string; descripcion: string; fecha_inicio: string; fecha_fin: string; hora: string; tipo: string; ambito: 'externo'; ubicacion: string; entidad_externa: string };
 export type EmailInput = { to: string; subject: string; html: string; text: string; approvedBy: string; externalRef: string; oportunidadId?: string; unsubscribeUrl: string };
@@ -102,9 +102,10 @@ export class TrygestionClient {
   }
   crearContacto(data: ContactoInput, key?: string) { return this.request('/contactos', linkedSchema, 'POST', data, undefined, key); }
   etapas() { return this.request('/pipeline/etapas', z.array(etapaSchema), 'GET', undefined, 'etapas'); }
-  async buscarOportunidad(empresaId: string, titulo: string) {
+  /** Finds the opportunity created by try! Comercial for a company by its reference (in the description) or legacy title. */
+  async buscarOportunidad(empresaId: string, referencia: string, tituloAntiguo?: string) {
     const rows = await this.request(`/pipeline/oportunidades?empresa_id=${encodeURIComponent(empresaId)}`, z.array(opportunitySchema), 'GET', undefined, 'oportunidades');
-    return rows.find(row => row.empresa_id === empresaId && row.titulo === titulo) ?? null;
+    return rows.find(row => row.empresa_id === empresaId && ((row.descripcion ?? '').includes(referencia) || (tituloAntiguo !== undefined && row.titulo === tituloAntiguo))) ?? null;
   }
   crearOportunidad(data: OportunidadInput, key?: string) { return this.request('/pipeline/oportunidades', linkedSchema, 'POST', data, undefined, key); }
   oportunidad(id: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}`, opportunitySchema); }
