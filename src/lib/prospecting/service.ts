@@ -1,3 +1,4 @@
+import { enqueueCompany } from '../trygestion/outbox';
 import { Prisma, PrismaClient, type SearchProfile } from '@prisma/client';
 import { z } from 'zod';
 import { sourceAdapter } from '../sources';
@@ -77,6 +78,7 @@ async function ingest(db: PrismaClient, profile: SearchProfile, runId: string, c
         if (!updated.count) await tx.contact.create({ data: { companyId: existing.id, fullName: 'Contacto general', ...contact, legalBasis: 'LEGITIMATE_INTEREST', consentStatus: 'PENDING' } });
       }
       await tx.companySource.upsert({ where, update: { companyId: existing.id, ...sourceData }, create: { source: candidate.source, sourceRef: candidate.sourceRef, companyId: existing.id, ...sourceData } });
+      await enqueueCompany(tx, existing.id);
       return { outcome: 'DUPLICATE', reason, sourceRef: candidate.sourceRef, companyId: existing.id };
     }
     if (!mayCreate) return { outcome: 'LIMIT', sourceRef: candidate.sourceRef };
@@ -87,6 +89,7 @@ async function ingest(db: PrismaClient, profile: SearchProfile, runId: string, c
     await tx.companySource.upsert({ where, update: { companyId: company.id, ...sourceData }, create: { source: candidate.source, sourceRef: candidate.sourceRef, companyId: company.id, ...sourceData } });
     const product = await tx.product.findUnique({ where: { line: profile.productLine } });
     if (product) await tx.opportunity.create({ data: { companyId: company.id, productId: product.id } });
+    await enqueueCompany(tx, company.id);
     return { outcome: 'CREATED', sourceRef: candidate.sourceRef, companyId: company.id };
   }, { timeout: 15_000 });
 }

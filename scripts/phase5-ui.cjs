@@ -1,0 +1,11 @@
+const fs = require('node:fs');
+function edit(path, fn) { const old = fs.readFileSync(path,'utf8').replaceAll('\r\n','\n'); const next=fn(old); if(old===next)throw Error(path); fs.writeFileSync(path,next,'utf8'); }
+edit('src/app/layout.tsx', s => s.replace('<Link href="/rastreo">Rastreo</Link>', '<Link href="/rastreo">Rastreo</Link><Link href="/integracion">Integración</Link>'));
+edit('src/app/empresas/[id]/page.tsx', s => s.replace('<PlacesView companyId=', '{company.trygestionEmpresaId && <p role="status">En trygestión · {company.trygestionEmpresaId}</p>}\n    <PlacesView companyId='));
+edit('src/app/mi-dia/page.tsx', s => s.replace("import Link from 'next/link';", "import Link from 'next/link';\nimport { EmailApproval } from './email-approval';\nimport { trygestionConfiguration } from '@/lib/trygestion/client';")
+  .replace('fecha?: string }', 'fecha?: string; email?: string }')
+  .replace('company: true, script: true', 'company: { include: { contacts: true } }, script: true, cadenceStep: true')
+  .replace('<form action={recordTaskResult}', `{process.env.EMAIL_TRANSPORT === 'trygestion' && trygestionConfiguration().enabled && task.type === 'EMAIL' && task.script && (task.script.content as Content).emails?.filter(email => email.dia === task.cadenceStep?.dayOffset).map(email => <EmailApproval key={email.dia} taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email}/>)}<form action={recordTaskResult}`)
+  .replace("{results.map((result)", '<fieldset className="w-full"><legend>Reunión: fecha y hora (zona del calendario)</legend><label>Fecha<input type="date" name="meetingDate"/></label><label>Hora<input type="time" name="meetingTime"/></label><label>Ubicación<input name="meetingLocation"/></label></fieldset>{results.map((result)')
+  .replace("{section('Hoy', today)}", "{searchParams.email && <p role=\"status\">{searchParams.email === 'EMAIL_SENT' ? 'Email enviado.' : `Email no enviado: ${searchParams.email}`}</p>}{section('Hoy', today)}"));
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));pkg.scripts['trygestion:backfill']='node scripts/run-typescript.cjs scripts/trygestion-backfill.ts';pkg.scripts['trygestion:sync']='node scripts/run-typescript.cjs scripts/trygestion-sync.ts';fs.writeFileSync('package.json',JSON.stringify(pkg,null,2)+'\n');

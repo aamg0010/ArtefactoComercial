@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import type { PrismaClient } from '@prisma/client';
 import { setTimeout as wait } from 'node:timers/promises';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { TrygestionClient, trygestionConfiguration } from '../trygestion/client';
 
 type Environment = Record<string, string | undefined>;
 export function llmConfiguration(env: Environment = process.env) {
   const requested = env.LLM_PROVIDER || 'mock';
-  if (!['mock', 'anthropic', 'openai'].includes(requested)) throw new Error('LLM_PROVIDER inválido.');
-  const key = requested === 'anthropic' ? env.ANTHROPIC_API_KEY : env.OPENAI_API_KEY;
+  if (!['mock', 'anthropic', 'openai', 'trygestion'].includes(requested)) throw new Error('LLM_PROVIDER inválido.');
+  const key = requested === 'trygestion' ? (trygestionConfiguration(env).enabled ? env.TRYGESTION_TOKEN : undefined) : requested === 'anthropic' ? env.ANTHROPIC_API_KEY : env.OPENAI_API_KEY;
   const provider = requested === 'mock' || !key?.trim() ? 'mock' : requested;
   return { provider, key: provider === 'mock' ? undefined : key,
     model: provider === 'mock' ? 'deterministic-v1' : env.LLM_MODEL || (provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-4.1-mini'),
@@ -33,7 +35,13 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         let raw: unknown = context.mockResponse;
-        if (!configuration.simulated) {
+        if (configuration.provider === 'trygestion') {
+          const result = await new TrygestionClient({ env: context.env, fetcher: context.fetcher }).generarIA({ ...input, schema: zodToJsonSchema(input.schema, { effectStrategy: 'input', $refStrategy: 'none' }), maxTokens: 2000 });
+          configuration.model = result.model;
+          inputTokens = (inputTokens ?? 0) + (result.usage?.input_tokens ?? result.usage?.prompt_tokens ?? 0);
+          outputTokens = (outputTokens ?? 0) + (result.usage?.output_tokens ?? result.usage?.completion_tokens ?? 0);
+          raw = result.json;
+        } else if (!configuration.simulated) {
           const anthropic = configuration.provider === 'anthropic';
           const response = await (context.fetcher ?? fetch)(anthropic ? 'https://api.anthropic.com/v1/messages' : 'https://api.openai.com/v1/responses', {
             method: 'POST', signal: AbortSignal.timeout(60_000),

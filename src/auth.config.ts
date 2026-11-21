@@ -7,7 +7,7 @@ export const authConfig = {
   pages: { signIn: '/login' },
   callbacks: {
     authorized({ auth, request }) {
-      return request.nextUrl.pathname === '/login' || Boolean(auth?.user);
+      return request.nextUrl.pathname === '/login' || request.nextUrl.pathname.startsWith('/baja/') || Boolean(auth?.user);
     },
   },
 } satisfies NextAuthConfig;

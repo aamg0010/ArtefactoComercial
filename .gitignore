@@ -5,6 +5,7 @@ playwright-report/
 test-results/
 e2e-output.log
 .cache/ms-playwright/
+.cache/npm/
 .cache/e2e-server-*.json
 generated
 tsconfig.tsbuildinfo
