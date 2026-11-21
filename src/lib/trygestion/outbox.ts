@@ -12,7 +12,7 @@ export async function enqueueCompany(db: OutboxDb, companyId: string, revision?:
   const company = await db.company.findUnique({ where: { id: companyId } });
   if (!company || company.acceptanceStatus !== 'ACCEPTED') return null;
   // Only a fingerprint is retained; the worker reads the latest owned CRM data.
-  const fingerprint = createHash('sha256').update(JSON.stringify([company.name, company.nifNit, company.website, company.city, company.region, company.country, company.email, company.phone, company.sector, company.priority, revision])).digest('hex');
+  const fingerprint = createHash('sha256').update(JSON.stringify([company.name, company.nifNit, company.website, company.city, company.region, company.country, company.email, company.phone, company.sector, company.priority, process.env.APP_PUBLIC_URL ?? '', revision])).digest('hex');
   return enqueue(db, 'COMPANY_UPSERT', companyId, {}, fingerprint);
 }
 export async function backfillCompanies(db: PrismaClient, companyId?: string) {

@@ -1,2 +1,56 @@
-@tailwind base; @tailwind components; @tailwind utilities;
-@layer base { body { @apply bg-slate-50 text-slate-900; } input, select, textarea { @apply w-full rounded border border-slate-300 px-3 py-2 text-sm; } button { @apply rounded bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50; } }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Lineamientos try! company (como trygestión): violeta #5858F4 como principal, lima #B5FF7B como acento,
+   Poppins para títulos e interfaz; DM Serif Display (la serif del logo) como acento en lemas y subtítulos;
+   tarjetas rounded-2xl y botones rounded-xl. */
+:root {
+  --color-primary: #5858f4;
+  --color-primary-hover: #4f3fe8;
+  --color-accent: #b5ff7b;
+  --color-bg: #f8f9fa;
+  --color-card: #ffffff;
+  --color-text: #1f2937;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply min-h-screen antialiased; background-color: var(--color-bg); color: var(--color-text); font-family: var(--font-display), system-ui, sans-serif; }
+  h1, h2, h3, h4, h5, h6, label, button, nav, th, summary, legend, .font-display { font-family: var(--font-display), system-ui, sans-serif; }
+  h1 { @apply text-2xl font-bold tracking-tight text-try-950; }
+  h2 { @apply text-try-950; }
+  h3 { @apply text-try-950; }
+  label { @apply text-sm font-medium text-slate-700; }
+  input, select, textarea { @apply mt-1 w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition; border-color: var(--color-border); font-family: var(--font-display), system-ui, sans-serif; }
+  input:focus, select:focus, textarea:focus { @apply ring-2 ring-try-200; border-color: var(--color-primary); }
+  input[type='checkbox'], input[type='radio'] { @apply mt-0 h-4 w-4 rounded border-slate-300 p-0 shadow-none; accent-color: var(--color-primary); }
+  input[type='file'] { @apply cursor-pointer file:mr-3 file:rounded-lg file:border-0 file:bg-try-50 file:px-3 file:py-1.5 file:text-try-700; }
+  button { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50; background-color: var(--color-primary); }
+  button:hover:not(:disabled) { background-color: var(--color-primary-hover); }
+  a { @apply text-try-600 transition-colors hover:text-try-800; }
+  table { @apply w-full text-left text-sm; }
+  thead { @apply text-xs uppercase tracking-wide text-slate-500; }
+  th { @apply font-semibold; }
+  tbody tr { @apply transition-colors hover:bg-try-50/50; }
+  summary { @apply cursor-pointer text-sm font-medium text-try-700; }
+  details[open] > summary { @apply mb-2; }
+  [role='status'] { @apply rounded-xl border border-try-100 bg-try-50 px-4 py-2 text-sm text-try-900; }
+  fieldset { @apply rounded-xl border p-3; border-color: var(--color-border); }
+  legend { @apply px-1 text-sm font-medium text-slate-700; }
+}
+
+@layer components {
+  .card { @apply rounded-2xl border bg-white p-5 shadow-card; border-color: var(--color-border); }
+  .btn-secondary { @apply border bg-white text-slate-700 shadow-none; border-color: var(--color-border); }
+  .btn-secondary:hover:not(:disabled) { @apply bg-white text-try-700; border-color: var(--color-primary); }
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold; font-family: var(--font-display), system-ui, sans-serif; }
+  .badge-a { @apply bg-lima-300 text-lima-800; }
+  .badge-b { @apply bg-try-100 text-try-800; }
+  .badge-c { @apply bg-slate-100 text-slate-600; }
+  .badge-warning { @apply bg-amber-100 text-amber-800; }
+  .page-title { @apply mb-1 text-2xl font-bold text-try-950; }
+  .page-subtitle { @apply mb-6 text-base text-slate-500; font-family: var(--font-serif), Georgia, serif; }
+}

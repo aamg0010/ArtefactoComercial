@@ -110,11 +110,13 @@ export class TrygestionClient {
   crearOportunidad(data: OportunidadInput, key?: string) { return this.request('/pipeline/oportunidades', linkedSchema, 'POST', data, undefined, key); }
   oportunidad(id: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}`, opportunitySchema); }
   /** PUT /pipeline/oportunidades/:id nulls the fields it is not sent (empresa, contacto, responsable…), so the current row is merged. */
-  async actualizarOportunidad(id: string, probabilidad: number, key?: string) {
+  async actualizarOportunidad(id: string, probabilidad: number, key?: string, descripcion?: string) {
     const current = await this.oportunidad(id) as Record<string, unknown>;
     const keep = ['titulo', 'descripcion', 'empresa_id', 'contacto_id', 'etapa_id', 'valor_estimado', 'fecha_cierre_estimada', 'responsable_id', 'cotizacion_id', 'proyecto_id', 'categoria'];
     const body = Object.fromEntries(keep.map(field => [field, current[field] ?? null]));
-    return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}`, acknowledgement, 'PUT', { ...body, probabilidad }, undefined, key);
+    // The description is only replaced while it is still the one try! Comercial wrote (it contains our reference).
+    const ours = typeof current.descripcion === 'string' && current.descripcion.startsWith('Oportunidad creada desde try! Comercial');
+    return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}`, acknowledgement, 'PUT', { ...body, probabilidad, ...(descripcion && (ours || !current.descripcion) ? { descripcion } : {}) }, undefined, key);
   }
   cambiarEtapa(id: string, etapa_id: string, key?: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}/etapa`, acknowledgement, 'PUT', { etapa_id }, undefined, key); }
   cambiarEstado(id: string, estado: 'ganada' | 'perdida', motivo?: string, key?: string) { return this.request(`/pipeline/oportunidades/${encodeURIComponent(id)}/estado`, acknowledgement, 'PUT', { estado, ...(estado === 'perdida' && motivo ? { motivo_perdida: motivo } : {}) }, undefined, key); }

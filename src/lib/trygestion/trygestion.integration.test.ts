@@ -31,7 +31,10 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     return db.company.create({ data: { country: 'ES', city: 'Alcañiz', region: 'Teruel', sector: 'Agroalimentario', priority: 'B', ...data, name, normalizedName: name.toLowerCase() } });
   };
 
+  const originalPublicUrl = process.env.APP_PUBLIC_URL;
   beforeAll(async () => {
+    // Los tests controlan la dirección pública (el .env de la torre la define).
+    delete process.env.APP_PUBLIC_URL;
     mock = await startTrygestionMock();
     env = { TRYGESTION_URL: mock.url, TRYGESTION_TOKEN: mock.token, EMAIL_TRANSPORT: 'trygestion', AUTH_SECRET: 'secreto-de-pruebas-local', AUTH_URL: 'http://localhost:3000' };
     client = () => new TrygestionClient({ env });
@@ -47,6 +50,7 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     mock.state.failures.clear();
   });
   afterAll(async () => {
+    if (originalPublicUrl === undefined) delete process.env.APP_PUBLIC_URL; else process.env.APP_PUBLIC_URL = originalPublicUrl;
     await db.company.deleteMany({ where: { name: { startsWith: 'Prueba trygestión' } } });
     await db.syncOutbox.deleteMany(); await db.emailDispatch.deleteMany();
     await db.user.deleteMany({ where: { email: 'comercial-trygestion@test.local' } });
@@ -105,6 +109,32 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     await enqueueCompany(db, local.id, 'reintento-2'); await drain(local.id);
     expect(mock.state.opportunities).toHaveLength(1);
     expect((await db.company.findUniqueOrThrow({ where: { id: local.id } })).trygestionOportunidadId).toBe(remote.id);
+  });
+
+  it('escribe en trygestión el enlace a la ficha de try! Comercial y lo actualiza sin tocar las notas del cliente', async () => {
+    process.env.APP_PUBLIC_URL = 'http://100.89.173.49:3001/';
+    try {
+      mock.state.companies.push({ id: 'cliente-con-notas', nombre: 'Prueba trygestión Cliente Con Notas SL', cif: 'B44444444', notas: 'Cliente desde 2019\nLlamar por la tarde' });
+      const linked = await company({ nifNit: 'B44444444', name: 'Prueba trygestión Cliente Con Notas SL' });
+      const fresh = await company();
+      await enqueueCompany(db, linked.id); await enqueueCompany(db, fresh.id); await drain();
+      const notesLinked = String(mock.state.companies.find(row => row.id === 'cliente-con-notas')!.notas).split('\n');
+      expect(notesLinked).toEqual(['Cliente desde 2019', 'Llamar por la tarde', 'Origen: try! Comercial · prospecto · prioridad B', `Ficha en try! Comercial: http://100.89.173.49:3001/empresas/${linked.id}`]);
+      const opportunity = mock.state.opportunities.find(row => String(row.descripcion).includes(fresh.id))!;
+      expect(String(opportunity.descripcion)).toContain(`Ficha en try! Comercial: http://100.89.173.49:3001/empresas/${fresh.id}`);
+      // Nueva dirección pública: al reencolar se reemplazan solo las líneas propias.
+      process.env.APP_PUBLIC_URL = 'https://comercial.try.test';
+      await enqueueCompany(db, linked.id); await drain();
+      const updated = String(mock.state.companies.find(row => row.id === 'cliente-con-notas')!.notas).split('\n');
+      expect(updated).toEqual(['Cliente desde 2019', 'Llamar por la tarde', 'Origen: try! Comercial · prospecto · prioridad B', `Ficha en try! Comercial: https://comercial.try.test/empresas/${linked.id}`]);
+      const linkedOpportunity = mock.state.opportunities.find(row => row.empresa_id === 'cliente-con-notas')!;
+      expect(String(linkedOpportunity.descripcion)).toContain(`https://comercial.try.test/empresas/${linked.id}`);
+      // Si alguien del equipo reescribe la descripción en trygestión, no se pisa.
+      linkedOpportunity.descripcion = 'Notas del comercial';
+      process.env.APP_PUBLIC_URL = 'https://otra.try.test';
+      await enqueueCompany(db, linked.id); await drain();
+      expect(linkedOpportunity.descripcion).toBe('Notas del comercial');
+    } finally { delete process.env.APP_PUBLIC_URL; }
   });
 
   it('enlaza también por dominio web y por nombre normalizado', async () => {
