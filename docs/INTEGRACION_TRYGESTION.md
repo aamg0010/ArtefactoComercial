@@ -115,7 +115,22 @@ Devuelve `{ tenant, smtp: bool, ia: bool, googleCalendar: bool, etapas: [...] }`
 Decisiones (21/11): todas las empresas desde el inicio · Pipeline (`pipeline_*`) · cambios de trygestión
 preparados y probados en copia antes de desplegar.
 
-## 7. Observaciones de seguridad (no bloquean)
+## 7. Estado del despliegue (21/11/2026)
+
+- **trygestión en producción:** desplegados el token de servicio con alcance y `/api/comercial/*` (estado, email, IA, supresión, administración de tokens). Se sustituyeron solo 4 compilados de `dist/server` (verificados idénticos a lo que produce el compilador desde el `.ts` de producción) y se añadieron 4 nuevos. No se recompiló todo: había 8 `.ts` con cambios aún no desplegados (facturas, nóminas, paquetes, gestoría…).
+- **Proceso PM2:** se llama `gestion-server` (los scripts de despliegue antiguos usan `try-gestion`).
+- **Copia previa y vuelta atrás:** `httpdocs/gestion/.deploy_prev/comercial_20261121_154623/`, con la base copiada con `.backup` y `quick_check` correcto, y `rollback.sh`.
+- **Tablas nuevas (vacías al crear):** `servicio_tokens`, `comercial_supresion`, `comercial_envios`, `comercial_ia_uso`.
+- **Token:** se creó para `tenant-try-legacy` y está solo en el `.env` de la torre. En la base solo se guarda su hash.
+- **Primera sincronización:** 56 empresas, 22 contactos y 56 oportunidades en *Prospecto*, sin errores. Ninguna coincidía con los 22 clientes existentes.
+- **Aún desactivado:** `EMAIL_TRANSPORT=trygestion` y `LLM_PROVIDER=trygestion`. La sincronización periódica es manual (`npm run trygestion:sync` o *Procesar ahora*).
+- **Código de trygestión:** no tiene repositorio git. Hay una copia versionada localmente en la torre (`Projects/trygestion-copia`) con estos cambios y sus tests.
+
+### Hallazgos durante el despliegue
+- `VACUUM INTO` sobre la base de producción falla en `pipeline_oportunidades` (23 columnas pero 24 valores). Indica una incoherencia del esquema de esa tabla que conviene revisar. `.backup` funciona y la copia pasa `quick_check`.
+- En `server/` conviven `.js` compilados antiguos junto a los `.ts`. Producción ejecuta `dist/`, pero confunde a herramientas como Vitest.
+
+## 8. Observaciones de seguridad (no bloquean)
 
 - El token de Cronos suplanta al CEO con superadmin y se compara con `===`: conviene migrarlo a la sección 3.
 - En `httpdocs/gestion` hay un `enable_banking.pem`. Hoy **no es accesible desde internet**: comprobado,
