@@ -9,7 +9,7 @@ type Content = { llamada?: { apertura?: string; motivo?: string; pregunta_clave?
 
 export default async function MyDay({ searchParams }: { searchParams: { fecha?: string } }) {
   const day = searchParams.fecha ?? madridDate();
-  const all = await prisma.task.findMany({ where: { status: 'PENDING', OR: [{ dueAt: { lte: new Date(`${day}T23:59:59.999Z`) } }, { dueAt: null }] }, include: { company: true, script: true }, orderBy: [{ company: { priority: 'asc' } }, { dueAt: 'asc' }] });
+  const all = await prisma.task.findMany({ where: { status: 'PENDING', company: { acceptanceStatus: 'ACCEPTED' }, OR: [{ dueAt: { lte: new Date(`${day}T23:59:59.999Z`) } }, { dueAt: null }] }, include: { company: true, script: true }, orderBy: [{ company: { priority: 'asc' } }, { dueAt: 'asc' }] });
   const today = all.filter((task) => taskDate(task.dueAt) === day);
   const overdue = all.filter((task) => task.dueAt && taskDate(task.dueAt)! < day);
   const planning = all.filter((task) => !task.dueAt);

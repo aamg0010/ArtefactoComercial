@@ -61,6 +61,11 @@ enum ScriptStatus {
   BORRADOR
   APPROVED
 }
+enum CompanyAcceptanceStatus {
+  PENDING
+  ACCEPTED
+  DISCARDED
+}
 model User {
   id String @id @default(cuid())
   name String?
@@ -146,6 +151,8 @@ model Company {
   discoveryRunId String?
   discoveryRun SourceRun? @relation(fields: [discoveryRunId], references: [id], onDelete: SetNull)
   sourceIdentities CompanySource[]
+  acceptanceStatus CompanyAcceptanceStatus @default(ACCEPTED)
+  evidence CompanyEvidence[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([normalizedName, country, city])
@@ -324,6 +331,7 @@ model SearchProfile {
   cnaeCodes String[]
   productLine String
   source String @default("google-places")
+  sources String[] @default([])
   maxResults Int @default(10)
   csvCandidates Json?
   runs SourceRun[]
@@ -358,8 +366,26 @@ model CompanySource {
   source String
   sourceRef String
   blocked Boolean @default(false)
+  sourceUrl String?
+  attribution String?
+  observedAt DateTime @default(now())
   @@unique([source, sourceRef])
   @@index([companyId])
+}
+
+model CompanyEvidence {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  kind String
+  data Json
+  confirmedBy String
+  createdAt DateTime @default(now())
+}
+
+model SourceThrottle {
+  id String @id
+  availableAt DateTime @default(now())
 }
 
 model AiRun {

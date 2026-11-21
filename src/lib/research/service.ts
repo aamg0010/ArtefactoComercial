@@ -13,6 +13,7 @@ import { generatedScriptSchema, generatedScriptShape, mockScript, type StandardS
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 export async function investigateCompany(db: PrismaClient, companyId: string) {
   const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, include: { contacts: true, opportunities: { include: { product: true } } } });
+  if (company.acceptanceStatus !== 'ACCEPTED') throw new Error('Acepta la empresa antes de investigarla.');
   const catalog = await db.product.findMany({ where: { active: true } });
   const preferred = [...new Set([...company.opportunities.map(item => item.product.line), ...catalog.map(item => item.line)])];
   const web = await crawlCompanyWebsite(company.website ?? company.normalizedDomain);
@@ -42,6 +43,7 @@ export async function applySuggestedPriority(db: PrismaClient, companyId: string
 
 export async function generateCompanyScript(db: PrismaClient, companyId: string, requestedProduct?: string) {
   const company = await db.company.findUniqueOrThrow({ where: { id: companyId } });
+  if (company.acceptanceStatus !== 'ACCEPTED') throw new Error('La empresa está pendiente de aceptar o descartada.');
   const report = await db.researchReport.findFirstOrThrow({ where: { companyId, origin: 'AI' }, orderBy: { version: 'desc' } });
   const research = researchShape.parse(report.data);
   const product = await db.product.findUniqueOrThrow({ where: { line: requestedProduct || research.recommendations[0].line } });
@@ -63,6 +65,7 @@ export async function generateCompanyScript(db: PrismaClient, companyId: string,
 export async function approveCompanyScript(db: PrismaClient, scriptId: string, userId?: string) {
   return db.$transaction(async tx => {
     const script = await tx.script.findUniqueOrThrow({ where: { id: scriptId }, include: { company: true } });
+    if (script.company.acceptanceStatus !== 'ACCEPTED') throw new Error('La empresa está pendiente de aceptar o descartada.');
     if (script.status === 'APPROVED') return;
     const newer = await tx.script.count({ where: { companyId: script.companyId, version: { gt: script.version } } });
     if (newer) throw new Error('Aprueba únicamente la versión más reciente.');

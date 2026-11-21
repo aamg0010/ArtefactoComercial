@@ -23,3 +23,19 @@ export function hasDirectContact(contact: { email?: string | null; phone?: strin
 export function isVerifiedDirectContact(contact: { email?: string | null; phone?: string | null; verified?: boolean }) {
   return Boolean(contact.verified && hasDirectContact(contact));
 }
+
+/** Only generic business inboxes on a non-personal provider. */
+export function corporateEmail(value?: string | null) {
+  const email = value?.trim().toLowerCase();
+  if (!email || !/^[\w.+-]+@(?:[a-z0-9-]+\.)+[a-z]{2,63}$/i.test(email)) return null;
+  const [local, domain] = email.split('@');
+  if (personalEmailDomain.test(domain)) return null;
+  if (!/^(?:info|contacto|contact|office|administracion|administración|admin|ventas|comercial|recepcion|recepción|hello|hola|soporte|atencion|reservas|visitas|gerencia|mail|correo|central|general|empresa)(?:[._+-].*)?$/.test(local) && local !== domain.split('.')[0]) return null;
+  return email;
+}
+
+export function businessPhone(value?: string | null) {
+  const phone = value?.split(';')[0].trim();
+  const digits = phone?.match(/\d/g)?.length ?? 0;
+  return phone && !/[a-záéíóúñ]/i.test(phone) && digits >= 7 && digits <= 15 ? phone : null;
+}

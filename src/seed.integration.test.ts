@@ -13,6 +13,10 @@ import prospects from '../data/prospectos.json';
 import { runProspecting } from './lib/prospecting/service';
 import { sourceAdapter } from './lib/sources';
 import type { CandidateCompany, SourceAdapter } from './lib/sources/types';
+import { OpenStreetMapAdapter, OverpassGate, DatabaseOverpassGate, osmAttribution } from './lib/sources/openstreetmap';
+import { acceptCompany, prepareAcceptance, discardCompany } from './lib/prospecting/acceptance';
+import { runResearchBatch } from './lib/research/batch';
+import { isSuppressed } from './lib/suppression';
 
 const run = promisify(execFile);
 const url = process.env.TEST_DATABASE_URL;
@@ -53,6 +57,7 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     vi.stubEnv('GOOGLE_PLACES_API_KEY', '');
     // This suite owns only the explicitly validated disposable database.
     await db.company.deleteMany();
+    await db.sourceThrottle.deleteMany();
     await db.companySource.deleteMany();
     await db.sourceRun.deleteMany();
     await db.searchProfile.deleteMany();
@@ -335,6 +340,93 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     const profile = await db.searchProfile.create({ data: { name: 'Perfil de pruebas', active: true, country: 'ES', provinces: ['Teruel'], comarcas: ['Bajo Aragón'], municipalities: ['Alcañiz'], keywords: ['proveedor de pruebas'], cnaeCodes: [], productLine: 'Athenea', source: 'google-places', maxResults } });
     profileIds.push(profile.id); return profile;
   }
+  function osmFixture() {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ elements: [{ type: 'way', id: 321, tags: { name: 'Taller Común S.L.', website: 'https://taller.example.test', phone: '978000111', email: 'info@taller.example.test', shop: 'car_repair' } }] })));
+    return new OpenStreetMapAdapter({ fetcher, gate: new OverpassGate(vi.fn().mockResolvedValue(undefined), () => 0) });
+  }
+  async function googlePendingFixture() {
+    const profile = await prospectingProfile(2);
+    const candidate: CandidateCompany = { name: 'Nombre Google no almacenable', city: 'Alcañiz', province: 'Teruel', country: 'ES', address: 'Dirección Google', website: 'https://web-propia.example.test', corporatePhone: '978999999', category: 'company', source: 'google-places', sourceRef: `google-${randomUUID()}`, sourceUrl: 'https://www.google.com/maps', simulated: false };
+    const adapter: SourceAdapter = { id: 'google-places', search: async () => [candidate] };
+    const [run] = await runProspecting(profile.id, { db, adapter });
+    expect(run.errors).toBe(0);
+    const company = await db.company.findFirstOrThrow({ where: { discoveryRunId: run.id } });
+    return { profile, candidate, adapter, company };
+  }
+  it('OSM simulado guarda nombre, web y atribución con identidad de fuente', async () => {
+    const profile = await prospectingProfile();
+    await db.searchProfile.update({ where: { id: profile.id }, data: { sources: ['openstreetmap'] } });
+    const [run] = await runProspecting(profile.id, { db, adapters: { openstreetmap: osmFixture() } });
+    expect(run).toMatchObject({ created: 1, errors: 0 });
+    const company = await db.company.findFirstOrThrow({ where: { discoveryRunId: run.id }, include: { sourceIdentities: true } });
+    expect(company).toMatchObject({ name: 'Taller Común S.L.', website: 'https://taller.example.test/', email: 'info@taller.example.test', acceptanceStatus: 'ACCEPTED' });
+    expect(company.sourceDetail).toContain(osmAttribution); expect(company.sourceIdentities[0]).toMatchObject({ source: 'openstreetmap', sourceRef: 'way/321', attribution: osmAttribution });
+    expect(await db.task.count({ where: { companyId: company.id } })).toBe(0);
+  });
+  it.each(['domain', 'phone', 'name'] as const)('OSM y Google coincidentes por %s dejan una sola empresa y dos fuentes', async kind => {
+    const profile = await prospectingProfile();
+    await db.searchProfile.update({ where: { id: profile.id }, data: { sources: ['google-places', 'openstreetmap'] } });
+    const candidate: CandidateCompany = { name: kind === 'name' ? 'TALLER COMUN Sociedad Limitada' : 'Otra denominación Google', city: kind === 'name' ? 'ALCANIZ' : 'Caspe', province: 'Teruel', country: 'ES', address: null, website: kind === 'domain' ? 'https://www.taller.example.test' : null, corporatePhone: kind === 'phone' ? '+34 978 000 111' : null, category: '', source: 'google-places', sourceRef: `google-${kind}`, sourceUrl: null, simulated: false };
+    const [run] = await runProspecting(profile.id, { db, adapters: { openstreetmap: osmFixture(), 'google-places': { id: 'google-places', search: async () => [candidate] } } });
+    expect(run).toMatchObject({ created: 1, duplicates: 1, errors: 0 });
+    const rows = await db.company.findMany({ where: { discoveryRunId: run.id }, include: { sourceIdentities: true } });
+    expect(rows).toHaveLength(1); expect(rows[0].sourceIdentities).toHaveLength(2); expect(rows[0].name).toBe('Taller Común S.L.');
+  });
+  it('OSM confirma una pendiente Google anterior usando la comparación en vivo, sin cachear Google', async () => {
+    const { profile, company, candidate } = await googlePendingFixture();
+    expect(company.acceptanceStatus).toBe('PENDING'); expect(company.researchQueuedAt).toBeNull();
+    await db.searchProfile.update({ where: { id: profile.id }, data: { sources: ['openstreetmap'] } });
+    const details = vi.fn(async () => ({ ...candidate, website: 'https://taller.example.test' }));
+    const [run] = await runProspecting(profile.id, { db, adapters: { openstreetmap: osmFixture() }, googleDetails: details });
+    expect(run).toMatchObject({ created: 0, duplicates: 1, errors: 0 }); expect(details).toHaveBeenCalled();
+    const row = await db.company.findUniqueOrThrow({ where: { id: company.id }, include: { sourceIdentities: true } });
+    expect(row).toMatchObject({ acceptanceStatus: 'ACCEPTED', name: 'Taller Común S.L.', website: 'https://taller.example.test/' });
+    expect(row.sourceIdentities).toHaveLength(2); expect(JSON.stringify(row)).not.toContain('Nombre Google no almacenable');
+  });
+  it('aceptar Google sólo guarda los campos revisados y su procedencia web propia/manual', async () => {
+    const { company, candidate } = await googlePendingFixture();
+    const date = new Date().toISOString();
+    const prepared = await prepareAcceptance(db, company.id, { details: async () => candidate, crawl: async () => ({ sources: [{ id: 'web-1', url: 'https://web-propia.example.test/', date, text: 'Datos públicos propios' }], note: 'Web propia', business: [{ url: 'https://web-propia.example.test/', date, name: 'Nombre de la web', city: 'Alcañiz', phone: '978000111', email: 'info@web-propia.example.test' }] }) });
+    expect((await db.company.findUniqueOrThrow({ where: { id: company.id } })).website).toBeNull();
+    expect(prepared.proposal.fields.name?.value).toBe('Nombre de la web'); expect(prepared.proposal.fields.phone?.value).not.toBe(candidate.corporatePhone);
+    const user = await db.user.findUniqueOrThrow({ where: { email: 'comercial@try.company' } });
+    await acceptCompany(db, company.id, { name: 'Nombre revisado manualmente', city: 'Alcañiz', website: 'https://web-propia.example.test/', phone: '978000111', email: 'info@web-propia.example.test', confirmed: true }, user.id, prepared.proposal);
+    const row = await db.company.findUniqueOrThrow({ where: { id: company.id }, include: { evidence: true } });
+    expect(row).toMatchObject({ acceptanceStatus: 'ACCEPTED', source: 'WEB', name: 'Nombre revisado manualmente', phone: '978000111' });
+    expect(row.researchQueuedAt).not.toBeNull(); expect(row.evidence[0].kind).toBe('WEB_OWN');
+    const evidence = row.evidence[0].data as { provenance: Record<string, { kind: string; url?: string }> };
+    expect(evidence.provenance.name.kind).toBe('confirmado manualmente'); expect(evidence.provenance.phone).toMatchObject({ kind: 'web propia', url: 'https://web-propia.example.test/' });
+    expect(await db.task.count({ where: { companyId: company.id } })).toBe(0);
+    await acceptCompany(db, company.id, { name: 'No sobrescribir', city: 'Caspe', website: '', phone: '', email: '', confirmed: true }, user.id);
+    expect((await db.company.findUniqueOrThrow({ where: { id: company.id } })).name).toBe('Nombre revisado manualmente');
+  });
+  it('reconcilia un placeholder Google con una empresa OSM ya existente sin duplicarlas', async () => {
+    const { profile, company, candidate, adapter } = await googlePendingFixture();
+    const independent = await db.company.create({ data: { name: 'Empresa conocida por OSM', normalizedName: randomUUID(), country: 'ES', city: 'Alcañiz', website: candidate.website, normalizedDomain: 'web-propia.example.test', sourceIdentities: { create: { source: 'openstreetmap', sourceRef: 'way/reconcile', attribution: osmAttribution } } } });
+    companyIds.push(independent.id);
+    const [run] = await runProspecting(profile.id, { db, adapter });
+    expect(run).toMatchObject({ created: 0, duplicates: 1, errors: 0 });
+    expect(await db.company.findUnique({ where: { id: company.id } })).toBeNull();
+    expect(await db.companySource.count({ where: { companyId: independent.id } })).toBe(2);
+    expect((await db.company.findUniqueOrThrow({ where: { id: independent.id } })).name).toBe('Empresa conocida por OSM');
+  });
+  it('las pendientes no entran en investigación y descartar no crea exclusión', async () => {
+    const { company } = await googlePendingFixture();
+    await expect(investigateCompany(db, company.id)).rejects.toThrow('Acepta la empresa');
+    const investigate = vi.fn().mockResolvedValue(undefined);
+    await runResearchBatch(db, { investigate, pause: vi.fn().mockResolvedValue(undefined) });
+    expect(investigate.mock.calls.some(call => call[1] === company.id)).toBe(false);
+    const count = await db.suppressionList.count(); const user = await db.user.findUniqueOrThrow({ where: { email: 'comercial@try.company' } });
+    await discardCompany(db, company.id, user.id);
+    expect(await db.company.findUniqueOrThrow({ where: { id: company.id } })).toMatchObject({ acceptanceStatus: 'DISCARDED', pipelineStage: 'LOST', researchQueuedAt: null });
+    expect(await db.suppressionList.count()).toBe(count); expect(await isSuppressed(db, company.id)).toBe(false);
+  });
+  it('la puerta de Overpass coordina dos clientes de base sin solapar y con pausa real', async () => {
+    await db.sourceThrottle.deleteMany(); const starts: number[] = []; const ends: number[] = []; let active = 0; let maximum = 0;
+    const request = async () => { starts.push(Date.now()); active++; maximum = Math.max(maximum, active); await Promise.resolve(); active--; ends.push(Date.now()); };
+    await Promise.all([new DatabaseOverpassGate(db).run(request), new DatabaseOverpassGate(db).run(request)]);
+    expect(maximum).toBe(1); expect(starts[1] - ends[0]).toBeGreaterThanOrEqual(2000);
+  }, 15_000);
   it('el mock crea N Detectadas sin tareas, las encola y la segunda ejecución crea cero', async () => {
     const profile = await prospectingProfile();
     const [first] = await runProspecting(profile.id, { db });

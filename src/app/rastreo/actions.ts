@@ -19,13 +19,14 @@ export async function prospectingAction(form: FormData) {
     if (action !== 'run' && session.user.role !== 'ADMIN') throw new Error('Sólo administración puede configurar perfiles');
     const id = String(form.get('profileId') ?? '');
     if (action === 'save') {
+      const sources = [...new Set(form.getAll('sources').map(String))];
       const input = profileSchema.parse({ name: form.get('name'), active: form.get('active') === 'on', country: form.get('country'),
         provinces: list(form, 'provinces'), comarcas: list(form, 'comarcas'), municipalities: list(form, 'municipalities'), keywords: list(form, 'keywords'),
-        cnaeCodes: list(form, 'cnaeCodes'), productLine: form.get('productLine'), source: form.get('source'), maxResults: Number(form.get('maxResults')) });
+        cnaeCodes: list(form, 'cnaeCodes'), productLine: form.get('productLine'), source: sources[0], sources, maxResults: Number(form.get('maxResults')) });
       await prisma.product.findFirstOrThrow({ where: { line: input.productLine, active: true } });
       const csv = String(form.get('csv') ?? '');
-      if (input.source === 'csv' && !csv && !id) throw new Error('Falta CSV');
-      const data = { ...input, ...(input.source === 'csv' && csv ? { csvCandidates: JSON.parse(JSON.stringify(csvCandidates(csv))) as Prisma.InputJsonValue } : {}) };
+      if (input.sources.includes('csv') && !csv && !id) throw new Error('Falta CSV');
+      const data = { ...input, ...(input.sources.includes('csv') && csv ? { csvCandidates: JSON.parse(JSON.stringify(csvCandidates(csv))) as Prisma.InputJsonValue } : {}) };
       if (id) await prisma.searchProfile.update({ where: { id }, data });
       else await prisma.searchProfile.create({ data });
     } else if (action === 'toggle') {

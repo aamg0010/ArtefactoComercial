@@ -3,6 +3,7 @@ import { isIP } from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
 import type { Evidence } from './schema';
+import { extractSiteBusiness, type SiteBusiness } from './site-details';
 
 const userAgent = 'try-comercial-bot';
 const maxBytes = 200 * 1024;
@@ -90,7 +91,7 @@ export function isCanonicalRedirect(from: URL, to: URL) {
 
 class RobotsDenied extends Error {}
 
-export async function crawlCompanyWebsite(website: string | null, request = requestPage): Promise<{ sources: Evidence[]; note: string }> {
+export async function crawlCompanyWebsite(website: string | null, request = requestPage): Promise<{ sources: Evidence[]; note: string; business?: SiteBusiness[] }> {
   if (!website) return { sources: [], note: 'Sin web: ficha basada únicamente en los datos registrados en el CRM.' };
   try {
     let home = new URL(website.includes('://') ? website : `https://${website}`);
@@ -134,6 +135,7 @@ export async function crawlCompanyWebsite(website: string | null, request = requ
     if (result.status !== 200) throw new Error('Home no disponible');
     home = result.url;
     const sources: Evidence[] = [{ id: 'web-1', url: home.href, date: new Date().toISOString(), text: htmlText(result.text).slice(0, 30_000) || 'Web sin texto extraíble' }];
+    const business = [extractSiteBusiness(result.text, home.href, sources[0].date)];
     const links = [...result.text.matchAll(/href\s*=\s*["']([^"']+)["']/gi)].map(match => {
       try { return new URL(match[1], home); } catch { return null; }
     }).filter((url): url is URL => Boolean(url && url.origin === home.origin && /contact|quienes|qui[eé]nes|about|nosotros|empresa/i.test(url.pathname)));
@@ -145,9 +147,13 @@ export async function crawlCompanyWebsite(website: string | null, request = requ
       visited.add(url.href);
       try {
         const page = await fetchAllowedPage(url);
-        if (page.status === 200) sources.push({ id: `web-${sources.length + 1}`, url: page.url.href, date: new Date().toISOString(), text: htmlText(page.text).slice(0, 30_000) || 'Sin texto extraíble' });
+        if (page.status === 200) {
+          const date = new Date().toISOString();
+          sources.push({ id: `web-${sources.length + 1}`, url: page.url.href, date, text: htmlText(page.text).slice(0, 30_000) || 'Sin texto extraíble' });
+          business.push(extractSiteBusiness(page.text, page.url.href, date));
+        }
       } catch { /* A failed optional page is not evidence. */ }
     }
-    return { sources, note: `${sources.length} páginas públicas consultadas respetando robots.txt.` };
+    return { sources, business, note: `${sources.length} páginas públicas consultadas respetando robots.txt.` };
   } catch (error) { return { sources: [], note: error instanceof RobotsDenied ? 'robots.txt impide investigar esta web; se usan datos del CRM.' : 'Web no consultable de forma segura; ficha basada en el CRM, pendiente de verificar.' }; }
 }
