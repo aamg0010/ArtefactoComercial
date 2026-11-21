@@ -13,7 +13,7 @@ test('integración: estado de trygestión, procesar la cola y ver la empresa enl
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();
     await expect(page).toHaveURL('http://localhost:3100/');
     await page.getByRole('navigation', { name: 'Menú principal' }).getByRole('link', { name: 'Integración', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('Activada · Tenant: Tenant de pruebas local');
+    await expect(page.getByRole('status').filter({ hasText: 'Activada · Tenant: Tenant de pruebas local' })).toBeVisible();
     const queue = page.getByRole('region', { name: 'Cola de sincronización' });
     // The seed enqueues every accepted company (initial load of the 56).
     expect(Number(await queue.locator('[data-status="PENDING"]').innerText())).toBeGreaterThan(0);
