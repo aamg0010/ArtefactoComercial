@@ -14,7 +14,8 @@ export function ConsejosPerfil() {
       <li><b>Sector / palabras clave concretas.</b> Estas OpenStreetMap las entiende como tipo de negocio: {reconocidas.join(' · ')}. Además, cada palabra se busca en el nombre del negocio (p. ej. <i>cárnica</i>, <i>transportes</i>, <i>piensos</i>). Evita palabras genéricas como «Industrias» o «Empresas»: traen cualquier comercio y llenan la lista de ruido.</li>
       <li><b>Máximo de resultados</b>: empieza con 10–20, revisa la calidad y amplía si merece la pena.</li>
       <li><b>Fuentes</b>: OpenStreetMap es gratuito y público, pero a veces le faltan web o teléfono. Google Places es más completo (necesita clave) y sus empresas quedan pendientes de aceptar. CSV, si tienes un listado propio.</li>
-      <li><b>Códigos CNAE</b>: de momento no filtran en OpenStreetMap; úsalos como referencia.</li>
+      <li><b>eInforma</b> busca cada palabra clave en la <b>razón social</b> de todas las empresas de España y se queda con las de tus provincias (no filtra por municipio ni por CNAE). Funciona mejor con palabras que suelen estar en el nombre: <i>almazara, cooperativa, bodega, cárnica, transportes, construcciones</i>. Las empresas entran con el municipio «por verificar»; búscalas también en Google o investígalas para completarlas. Buscar no gasta saldo de eInforma.</li>
+      <li><b>Códigos CNAE</b>: de momento no filtran la búsqueda; úsalos como referencia.</li>
       <li><b>Si no sale nada</b>: revisa la ortografía del municipio y la provincia, prueba una palabra clave más concreta y, si el resumen dice que OpenStreetMap está saturado, vuelve a intentarlo en unos minutos.</li>
     </ol>
   </details>;
@@ -25,6 +26,11 @@ const explicaciones: [RegExp, string][] = [
   [/^OVERPASS_RESPONSE_INVALID$/, 'OpenStreetMap devolvió una respuesta no válida. Revisa el municipio y la provincia y vuelve a intentarlo.'],
   [/^OVERPASS_HTTP_/, 'OpenStreetMap rechazó la búsqueda. Revisa que los nombres no tengan caracteres raros.'],
   [/^GOOGLE_PLACES_NOT_CONFIGURED$/, 'Google Places no está configurado (falta la clave), así que no se buscó en Google. Desmarca Google en el perfil o configura la clave.'],
+  [/^EINFORMA_NOT_CONFIGURED$/, 'eInforma no tiene credenciales configuradas, así que no se buscó allí.'],
+  [/^EINFORMA_(TOKEN_HTTP_(400|401|403)|HTTP_(401|403))$/, 'eInforma rechazó las credenciales (usuario o clave API). Revísalas en tu zona privada de eInforma.'],
+  [/^EINFORMA_ONLY_SPAIN$/, 'eInforma solo tiene empresas de España: desmárcalo en perfiles de Colombia.'],
+  [/^EINFORMA_(NETWORK_ERROR|HTTP_(429|50\d))$/, 'eInforma no responde o está saturado. Vuelve a ejecutar en unos minutos.'],
+  [/^EINFORMA_/, 'eInforma devolvió una respuesta inesperada. Inténtalo más tarde.'],
   [/^SOURCE_NOT_IMPLEMENTED:(.+)$/, 'Una de las fuentes marcadas todavía no está disponible. Desmárcala en el perfil.'],
   [/^GOOGLE_LIVE_DEDUP_UNAVAILABLE$/, 'No se pudo comprobar duplicados contra Google; las empresas nuevas se revisarán igualmente.'],
 ];

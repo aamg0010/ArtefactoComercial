@@ -7,6 +7,7 @@ import { GooglePlacesAdapter, SourceError } from '../sources/google-places';
 import { normalizeDomain, normalizeText } from '../normalization';
 import { companyWebsiteCandidate, corporateEmail } from '../company-contact';
 import { osmAttribution } from '../sources/openstreetmap';
+import { CITY_PENDING } from '../sources/einforma';
 import { duplicateReason, normalizedBusinessName, normalizedPhone } from './deduplication';
 
 const json = (data: unknown) => JSON.parse(JSON.stringify(data)) as Prisma.InputJsonValue;
@@ -29,7 +30,7 @@ function companyData(candidate: CandidateCompany, profile: SearchProfile) {
   const name = google ? `Empresa detectada · ${profile.name} · ${candidate.sourceRef}` : candidate.name;
   return {
     name, normalizedName: normalizeText(name), country: profile.country,
-    city: google ? null : candidate.city, region: google ? null : candidate.province,
+    city: google || candidate.city === CITY_PENDING ? null : candidate.city, region: google ? null : candidate.province,
     comarca: profile.comarcas.length === 1 ? profile.comarcas[0] : null,
     address: google ? null : candidate.address, nifNit: google ? null : candidate.nif,
     website: google ? null : candidate.website, normalizedDomain: google ? null : normalizeDomain(candidate.website),
