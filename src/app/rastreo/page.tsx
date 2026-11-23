@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { madridDate, madridDayBounds } from '@/lib/dates';
-import { googlePlacesConfigured, prospectingSimulated, simulationAllowed } from '@/lib/sources';
+import { einformaCredentials, googlePlacesConfigured, prospectingSimulated, simulationAllowed } from '@/lib/sources';
 import { sourceNames } from '@/lib/sources/types';
 import { prospectingAction } from './actions';
 import type { SearchProfile } from '@prisma/client';
@@ -21,7 +21,7 @@ const placeholders: Record<string, string> = {
 export default async function Prospecting({ searchParams }: { searchParams: { error?: string; done?: string; ejecucion?: string } }) {
   const session = await auth(); const manage = session?.user?.role === 'ADMIN';
   const profiles = await prisma.searchProfile.findMany({ orderBy: { createdAt: 'asc' } });
-  const google = googlePlacesConfigured(); const mockOk = simulationAllowed();
+  const google = googlePlacesConfigured(); const mockOk = simulationAllowed(); const einforma = Boolean(einformaCredentials());
   // En producción no se ofrece la fuente simulada; Google sin clave se marca como no disponible.
   const availableSources = sourceNames.filter(source => source !== 'mock' || mockOk);
   const lastRuns = searchParams.ejecucion ? await prisma.sourceRun.findMany({ where: { id: { in: searchParams.ejecucion.split(',').slice(0, 10) } }, include: { profile: { select: { name: true } } } }) : [];
@@ -42,7 +42,7 @@ export default async function Prospecting({ searchParams }: { searchParams: { er
     <label>País<select name="country" defaultValue={profile?.country ?? 'ES'}><option value="ES">España</option><option value="CO">Colombia</option></select></label>
     {([['provinces', 'Provincias'], ['comarcas', 'Comarcas'], ['municipalities', 'Municipios'], ['keywords', 'Sector / palabras clave'], ['cnaeCodes', 'Códigos CNAE (opcional)']] as const).map(([key, label]) => <label key={key}>{label}<input name={key} required={['provinces', 'municipalities', 'keywords'].includes(key)} placeholder={placeholders[key]} defaultValue={profile?.[key].join('; ')}/></label>)}
     <label>Línea de producto<select name="productLine" defaultValue={profile?.productLine ?? products[0]?.line}>{products.map(product => <option value={product.line} key={product.id}>{product.line}</option>)}</select></label>
-    <fieldset><legend>Fuentes</legend>{availableSources.map(source => <label className="mr-3 inline-block" key={source}><input className="mr-1 w-auto" type="checkbox" name="sources" value={source} defaultChecked={(profile ? profile.sources.length ? profile.sources : [profile.source] : google || mockOk ? ['openstreetmap', 'google-places'] : ['openstreetmap']).includes(source)}/>{source}{['apollo', 'einforma', 'rues', 'linkedin-export'].includes(source) ? ' (pendiente)' : source === 'google-places' && !google ? (mockOk ? ' (sin clave: simulado)' : ' (sin clave: no disponible)') : source === 'mock' ? ' (simulada, solo pruebas)' : ''}</label>)}</fieldset>
+    <fieldset><legend>Fuentes</legend>{availableSources.map(source => <label className="mr-3 inline-block" key={source}><input className="mr-1 w-auto" type="checkbox" name="sources" value={source} defaultChecked={(profile ? profile.sources.length ? profile.sources : [profile.source] : google || mockOk ? ['openstreetmap', 'google-places'] : ['openstreetmap']).includes(source)}/>{source}{['apollo', 'rues', 'linkedin-export'].includes(source) ? ' (pendiente)' : source === 'einforma' ? (einforma ? ' (por nombre y provincia)' : ' (sin credenciales)') : source === 'google-places' && !google ? (mockOk ? ' (sin clave: simulado)' : ' (sin clave: no disponible)') : source === 'mock' ? ' (simulada, solo pruebas)' : ''}</label>)}</fieldset>
     <label>Máximo de resultados<input name="maxResults" type="number" min="1" max="200" defaultValue={profile?.maxResults ?? 6} required/></label>
     <label>CSV corporativo (sólo fuente csv)<textarea name="csv" placeholder="empresa,municipio,provincia,pais,web,telefono"/></label>
     <label><input name="active" type="checkbox" className="mr-2 w-auto" defaultChecked={profile?.active ?? true}/>Activo</label>

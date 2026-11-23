@@ -3,6 +3,8 @@ import { MockSourceAdapter } from './mock';
 import { CsvSourceAdapter } from './csv';
 import { StubSourceAdapter } from './stubs';
 import { OpenStreetMapAdapter, DatabaseOverpassGate } from './openstreetmap';
+import { EinformaAdapter, einformaCredentials } from './einforma';
+export { einformaCredentials } from './einforma';
 import type { PrismaClient } from '@prisma/client';
 import { sourceNames, type SourceAdapter } from './types';
 
@@ -15,6 +17,11 @@ export function sourceAdapter(source: typeof sourceNames[number], db?: PrismaCli
     if (googlePlacesConfigured()) return new GooglePlacesAdapter(process.env.GOOGLE_PLACES_API_KEY!);
     if (simulationAllowed()) return new MockSourceAdapter();
     return { id: 'google-places', search: async () => { throw new SourceError('GOOGLE_PLACES_NOT_CONFIGURED'); } };
+  }
+  if (source === 'einforma') {
+    const credentials = einformaCredentials();
+    if (credentials) return new EinformaAdapter(credentials);
+    return { id: 'einforma', search: async () => { throw new SourceError('EINFORMA_NOT_CONFIGURED'); } };
   }
   if (source === 'csv') return new CsvSourceAdapter();
   if (source === 'openstreetmap') return new OpenStreetMapAdapter(db ? { gate: new DatabaseOverpassGate(db) } : {});
