@@ -7,6 +7,11 @@ import { SourceError } from './google-places';
 import { type SourceAdapter, type SearchCriteria, type CandidateCompany, candidateSchema } from './types';
 
 export const osmAttribution = '© colaboradores de OpenStreetMap, ODbL';
+/** Servidores Overpass públicos (OVERPASS_URL admite varios separados por comas). */
+export function overpassEndpoints(env: Record<string, string | undefined> = process.env) {
+  const configured = (env.OVERPASS_URL ?? '').split(',').map(value => value.trim()).filter(Boolean);
+  return configured.length ? configured : ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+}
 export function osmTagFilters(keyword: string): [string, string][] {
   const key = normalizeText(keyword);
   if (/bodega|vino|vinic/.test(key)) return [['craft', 'winery'], ['industrial', 'winery'], ['shop', 'wine']];
@@ -87,7 +92,9 @@ export class OpenStreetMapAdapter implements SourceAdapter {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const response = await (this.dependencies.gate ?? sharedGate).run(async () => {
-            const raw = await (this.dependencies.fetcher ?? fetch)(this.dependencies.url ?? (process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter'), {
+            // Cada reintento usa el siguiente servidor de la lista: el público principal se satura a menudo (502/504).
+            const endpoints = this.dependencies.url ? [this.dependencies.url] : overpassEndpoints();
+            const raw = await (this.dependencies.fetcher ?? fetch)(endpoints[attempt % endpoints.length], {
             method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(60_000),
             headers: { 'content-type': 'application/x-www-form-urlencoded', 'User-Agent': 'try-comercial-bot (+contacto en README)', accept: 'application/json' },
             body: new URLSearchParams({ data: query }).toString(),
@@ -97,7 +104,7 @@ export class OpenStreetMapAdapter implements SourceAdapter {
             return { ok: raw.ok, status: raw.status, data };
           });
           if (!response.ok) {
-            if (![429, 504].includes(response.status) || attempt === 2) throw new SourceError(`OVERPASS_HTTP_${response.status}`);
+            if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 2) throw new SourceError(`OVERPASS_HTTP_${response.status}`);
             await (this.dependencies.pause ?? wait)(2000 * (attempt + 1)); continue;
           }
           payload = response.data; break;

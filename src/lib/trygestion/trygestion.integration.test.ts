@@ -279,6 +279,13 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     await expect(sendTaskEmail(db, { ...input, body: 'Texto cambiado' }, { env, client: client() })).rejects.toThrow('EMAIL_CONTENT_CHANGED');
   });
 
+  it('nunca envía a trygestión una empresa simulada', async () => {
+    const local = await company({ fictional: true, acceptanceStatus: 'ACCEPTED' });
+    await enqueueCompany(db, local.id); await drain(local.id);
+    expect(mock.state.companies.some(row => row.nombre === local.name)).toBe(false);
+    expect(await db.syncOutbox.findFirst({ where: { entityId: local.id } })).toMatchObject({ status: 'SKIPPED' });
+  });
+
   it('si la empresa no tiene email, el destinatario aprobado se guarda como su email corporativo', async () => {
     const local = await company({});
     const script = await db.script.create({ data: { companyId: local.id, author: 'test', content: {}, status: 'APPROVED' } });
