@@ -5,7 +5,10 @@ DirectoryIndex disabled
   RewriteEngine On
   RewriteCond %{HTTPS} !=on
   RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
-  RewriteRule ^(.*)$ http://127.0.0.1:3041/$1 [P,L,QSA]
+  # Se reenvía la ruta tal como llega (sin decodificar): Next.js usa rutas con %5Bid%5D
+  # y si Apache las decodifica a [id] la app responde 404 y la página se queda sin código.
+  RewriteCond %{THE_REQUEST} ^\S+\s([^\s?]+)
+  RewriteRule ^ http://127.0.0.1:3041%1 [P,NE,QSA,L]
 </IfModule>
 <IfModule mod_headers.c>
   RequestHeader set X-Forwarded-Proto "https"

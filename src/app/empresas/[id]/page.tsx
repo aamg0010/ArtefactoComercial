@@ -7,6 +7,14 @@ import { ScriptView } from '../../mi-dia/script-view';
 import type { GeneratedScript } from '@/lib/research/scripts';
 import { isVerifiedDirectContact } from '@/lib/company-contact';
 import { PlacesView } from './places-view';
+import { SubmitButton } from '../../submit-button';
+
+const pendingFor: Record<string, { pendingText: string; notice?: string }> = {
+  research: { pendingText: 'Investigando…', notice: 'Investigando la empresa (su web y fuentes públicas). Puede tardar unos minutos: no cierres ni recargues la página.' },
+  generate: { pendingText: 'Generando guion…', notice: 'La IA está escribiendo el guion de llamada y los emails. Puede tardar hasta un par de minutos: no cierres ni recargues la página.' },
+  approve: { pendingText: 'Aprobando…', notice: 'Aprobando el guion y creando las tareas de la cadencia.' },
+  priority: { pendingText: 'Aplicando…' },
+};
 
 export const dynamic = 'force-dynamic';
 const factorLabels: Record<string, string> = { sector: 'Encaje de sector', size: 'Tamaño', intent: 'Intención', contact: 'Accesibilidad del contacto', proximity: 'Proximidad geográfica', crossSell: 'Venta cruzada' };
@@ -20,7 +28,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   const latest = company.researchReports.find(report => report.origin === 'AI');
   const score = latest?.score;
   const research = researchShape.safeParse(latest?.data);
-  const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><button name="action" value={action} disabled={company.acceptanceStatus !== 'ACCEPTED'}>{label}</button></form>;
+  const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><SubmitButton name="action" value={action} disabled={company.acceptanceStatus !== 'ACCEPTED'} {...pendingFor[action]}>{label}</SubmitButton></form>;
   return <main className="mx-auto max-w-5xl space-y-6 p-5">
     <h1 className="page-title">{company.name}</h1>
     <p>Revisión: {company.acceptanceStatus === 'PENDING' ? 'Pendiente de aceptar' : company.acceptanceStatus === 'DISCARDED' ? 'Descartada' : 'Lista para trabajar'}</p>
@@ -70,12 +78,12 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
       <h2 className="text-lg font-semibold">Guiones</h2>
       {company.acceptanceStatus === 'ACCEPTED' && research.success && !company.scripts.some(script => script.status === 'APPROVED') && <form action={companyAction}>
         <input type="hidden" name="companyId" value={company.id}/><label>Línea de producto principal<select name="product" defaultValue={research.data.recommendations[0].line}>{products.map(product => <option key={product.id} value={product.line}>{product.line}</option>)}</select></label>
-        <button name="action" value="generate">Generar guion</button>
+        <SubmitButton name="action" value="generate" {...pendingFor.generate}>Generar guion</SubmitButton>
       </form>}
       {company.scripts.map(script => <article className="mt-4 border-t pt-3" key={script.id}>
         <h3 className="font-semibold">Guion versión {script.version} · {script.author} · {script.status === 'BORRADOR' ? 'BORRADOR' : 'Aprobado'}</h3>
         <ScriptView content={script.content as GeneratedScript}/>
-        {script.status === 'BORRADOR' && script.version === company.scripts[0].version && <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><button name="action" value="approve">Aprobar guion</button></form>}
+        {script.status === 'BORRADOR' && script.version === company.scripts[0].version && <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><SubmitButton name="action" value="approve" {...pendingFor.approve}>Aprobar guion</SubmitButton></form>}
       </article>)}
     </section>
     <section aria-label="Datos confirmados" className="card p-4"><h2 className="font-semibold">Datos confirmados y procedencia</h2>{company.evidence.map(item => {
