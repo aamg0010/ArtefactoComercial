@@ -8,11 +8,12 @@ import { companyWebsiteCandidate, hasDirectContact } from '../src/lib/company-co
 import { isSuppressed } from '../src/lib/suppression';
 import { defaultWeights } from '../src/lib/research/scoring';
 import { exampleProfiles } from '../src/lib/prospecting/profiles';
+import { productCatalog } from '../src/lib/products/catalog';
 
 type Prospect = { id: string; empresa: string; prioridad: string; estado: string; pais: string; provincia: string; comarca: string; municipio: string; sector: string; lineas_try: string[]; angulo_entrada: string; contacto: { texto: string; emails: string[]; telefonos: string[]; verificado: boolean; tipo: string; base_legal: string }; proxima_accion: string; fecha_proxima_accion: string | null; fuente: string };
 type ScriptData = { prospecto_id: string; interlocutor?: string; cadencia?: { dia: number; canal: string; accion: string }[]; [key: string]: unknown };
 const prisma = new PrismaClient();
-const products = [['Ganadex', 'Plataforma SaaS de gestión digital agro-ganadera'], ['trygestión', 'ERP de gestión empresarial general'], ['Athenea', 'ERP de trazabilidad integral'], ['Soporte técnico', 'Soporte in situ y remoto'], ['Ciberseguridad', 'Diagnóstico, protección y formación'], ['Sistemas de gestión', 'Procesos, ISO y digitalización'], ['Bots / IA', 'Chatbots, automatizaciones y agentes']] as const;
+const products = productCatalog.map(item => [item.line, item.description] as const);
 function stage(value: string) { return ({ 'Por investigar': 'DETECTED', 'Por contactar': 'RESEARCHED', Contactado: 'CONTACTING', 'Reunión agendada': 'MEETING', 'Propuesta enviada': 'PROPOSAL', Ganado: 'WON', Descartado: 'LOST' } as Record<string, string>)[value] ?? 'DETECTED'; }
 function productLine(value: string) { if (value.startsWith('Ganadex')) return 'Ganadex'; if (value.startsWith('Bots')) return 'Bots / IA'; if (value.startsWith('Soporte')) return 'Soporte técnico'; return value; }
 function cleanTaskTitle(value: string) { return value.replace(/\s*\((?:emails?\[\d+\]|llamada)\)/gi, ''); }
