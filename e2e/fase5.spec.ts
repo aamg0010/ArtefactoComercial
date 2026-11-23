@@ -24,7 +24,7 @@ test('integración: estado de trygestión, procesar la cola y ver la empresa enl
     const linked = await db.company.findFirstOrThrow({ where: { trygestionEmpresaId: { not: null } } });
     await page.goto(`/empresas/${linked.id}`);
     const section = page.getByRole('region', { name: 'trygestión' });
-    await expect(section).toContainText(linked.trygestionEmpresaId!);
+    await expect(section).toContainText('Sincronizada con el Pipeline');
     await expect(section.getByRole('link', { name: 'Abrir en trygestión ↗' })).toHaveAttribute('href', `https://trygestion.com/empresas?ver=${linked.trygestionEmpresaId}`);
     await expect(section.getByRole('link', { name: 'Pipeline de trygestión ↗' })).toHaveAttribute('href', 'https://trygestion.com/pipeline');
     // De trygestión a la app: la ficha de try! Comercial queda enlazada en las notas de la empresa remota.

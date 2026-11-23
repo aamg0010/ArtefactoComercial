@@ -5,8 +5,9 @@ import { companyAction } from './actions';
 import { researchShape } from '@/lib/research/schema';
 import { ScriptView } from '../../mi-dia/script-view';
 import type { GeneratedScript } from '@/lib/research/scripts';
-import { isVerifiedDirectContact } from '@/lib/company-contact';
+import { auth } from '@/auth';
 import { PlacesView } from './places-view';
+import { CompanyContact } from './company-contact';
 import { SubmitButton } from '../../submit-button';
 
 const pendingFor: Record<string, { pendingText: string; notice?: string }> = {
@@ -19,7 +20,20 @@ const pendingFor: Record<string, { pendingText: string; notice?: string }> = {
 export const dynamic = 'force-dynamic';
 const factorLabels: Record<string, string> = { sector: 'Encaje de sector', size: 'Tamaño', intent: 'Intención', contact: 'Accesibilidad del contacto', proximity: 'Proximidad geográfica', crossSell: 'Venta cruzada' };
 const fieldLabels: Record<string, string> = { name: 'Nombre', city: 'Municipio', website: 'Web', phone: 'Teléfono corporativo', email: 'Email corporativo' };
-export default async function CompanyDetail({ params, searchParams }: { params: { id: string }; searchParams: { error?: string; done?: string } }) {
+const errorMessages: Record<string, string> = {
+  'contacto-duplicado': 'Ese contacto ya existe en esta empresa (mismo nombre, email o teléfono). No se ha creado otra vez.',
+  'contacto-invalido': 'Revisa el contacto: el nombre es obligatorio y, si pones email, tiene que ser válido.',
+  'contacto-no-encontrado': 'Ese contacto ya no existe (quizá lo borró otra persona).',
+  'empresa-invalida': 'Revisa los datos de la empresa: el email tiene que ser válido.',
+  'nif-duplicado': 'Ese NIF/NIT ya pertenece a otra empresa de la base.',
+};
+const okMessages: Record<string, string> = {
+  'contacto-anadido': 'Contacto añadido.', 'contacto-borrado': 'Contacto borrado (también se borrará en trygestión).',
+  consentimiento: 'Consentimiento actualizado.', 'empresa-guardada': 'Datos de la empresa guardados.',
+};
+export default async function CompanyDetail({ params, searchParams }: { params: { id: string }; searchParams: { error?: string; done?: string; ok?: string } }) {
+  const session = await auth();
+  const canEdit = Boolean(session?.user?.id) && session?.user?.role !== 'DIRECTOR';
   const company = await prisma.company.findUnique({ where: { id: params.id }, include: {
     contacts: true, sourceIdentities: true, evidence: { orderBy: { createdAt: 'desc' } }, researchReports: { orderBy: { version: 'desc' }, include: { score: true } }, scripts: { orderBy: { version: 'desc' } },
   } });
@@ -29,29 +43,25 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   const score = latest?.score;
   const research = researchShape.safeParse(latest?.data);
   const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><SubmitButton name="action" value={action} disabled={company.acceptanceStatus !== 'ACCEPTED'} {...pendingFor[action]}>{label}</SubmitButton></form>;
-  return <main className="mx-auto max-w-5xl space-y-6 p-5">
-    <h1 className="page-title">{company.name}</h1>
+  return <main className="mx-auto max-w-5xl space-y-5 p-3 [overflow-wrap:anywhere] sm:p-5">
+    <h1 className="page-title break-words">{company.name}</h1>
     <p>Revisión: {company.acceptanceStatus === 'PENDING' ? 'Pendiente de aceptar' : company.acceptanceStatus === 'DISCARDED' ? 'Descartada' : 'Lista para trabajar'}</p>
     {company.trygestionEmpresaId && <section aria-label="trygestión" className="card flex flex-wrap items-center justify-between gap-3 border-try-100 bg-try-50/60 py-4">
-      <p className="font-display text-sm text-try-900"><span className="badge badge-b mr-2">En trygestión</span><span className="text-xs text-slate-500">{company.trygestionEmpresaId}</span></p>
+      <p className="font-display text-sm text-try-900"><span className="badge badge-b mr-2">En trygestión</span>Sincronizada con el Pipeline</p>
       <div className="flex flex-wrap gap-2">
         <a className="inline-flex items-center gap-1 rounded-xl bg-try-500 px-3 py-2 font-display text-sm font-medium text-white shadow-sm hover:bg-try-600 hover:text-white" href={trygestionEmpresaUrl(company.trygestionEmpresaId)} target="_blank" rel="noopener noreferrer">Abrir en trygestión ↗</a>
         <a className="inline-flex items-center gap-1 rounded-xl border border-try-200 bg-white px-3 py-2 font-display text-sm font-medium text-try-700 hover:border-try-500" href={trygestionPipelineUrl()} target="_blank" rel="noopener noreferrer">Pipeline de trygestión ↗</a>
       </div>
     </section>}
     <PlacesView companyId={company.id} country={company.country}/>
-    {searchParams.error && <p role="alert">No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.</p>}
-    {searchParams.done && <p role="status">Operación completada.</p>}
+    {searchParams.error && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">{errorMessages[searchParams.error] ?? 'No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.'}</p>}
+    {(searchParams.done || searchParams.ok) && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-emerald-900">{okMessages[searchParams.ok ?? ''] ?? 'Operación completada.'}</p>}
     <section aria-label="Datos de empresa" className="card p-4">
-      <h2 className="text-lg font-semibold">Datos de empresa</h2>
-      <p>{company.sector ?? 'Sector pendiente'} · {company.city} · {company.comarca} · {company.region} · {company.country}</p>
-      <p>Web: {company.website ?? company.normalizedDomain ?? 'Sin web registrada'}</p>
-      <p>Fuente: {company.sourceDetail}</p>
-      <ul>{company.sourceIdentities.map(source => <li key={source.id}>{source.source}: {source.sourceRef} · {source.observedAt.toISOString().slice(0, 10)} {source.sourceUrl && <a className="font-medium hover:underline" href={source.sourceUrl} target="_blank" rel="noreferrer">Ver fuente</a>} {source.attribution && <a className="ml-2 font-medium hover:underline" href="https://www.openstreetmap.org/copyright">{source.attribution}</a>}</li>)}</ul>
-      <p>Prioridad actual: {company.priority ?? 'Sin asignar'}</p>
-      <p>Próxima acción: {company.nextAction ?? 'Por definir'}</p>
-      <ul>{company.contacts.map(contact => <li key={contact.id}>{contact.fullName} · {contact.email?.trim() || contact.phone?.trim() || 'Sin canal de contacto directo'} · {isVerifiedDirectContact(contact) ? 'Verificado' : 'Pendiente de verificar'}</li>)}</ul>
-      {actionForm('research', 'Investigar')}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Datos de empresa</h2>
+        {actionForm('research', 'Investigar')}
+      </div>
+      <CompanyContact company={company} contacts={company.contacts} sources={company.sourceIdentities} editable={canEdit && company.acceptanceStatus !== 'DISCARDED'}/>
     </section>
     <section aria-label="Puntuación" className="card p-4">
       <h2 className="text-lg font-semibold">Puntuación</h2>

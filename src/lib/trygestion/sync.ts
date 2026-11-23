@@ -20,7 +20,7 @@ export async function stageId(client: TrygestionClient, stage: string, value = p
 export const backoffMs = (attempts: number) => Math.min(2 * 60 * 60_000, 60_000 * 2 ** Math.max(0, attempts - 1));
 class Deferred extends Error {}
 class Skipped extends Error {}
-const payloadSchema = z.object({ companyId: z.string().optional(), stage: z.string().optional(), estado: z.enum(['ganada', 'perdida']).optional(), motivo: z.string().optional(), event: z.unknown().optional(), emails: z.array(z.string()).optional(), domains: z.array(z.string()).optional() });
+const payloadSchema = z.object({ companyId: z.string().optional(), stage: z.string().optional(), estado: z.enum(['ganada', 'perdida']).optional(), motivo: z.string().optional(), event: z.unknown().optional(), emails: z.array(z.string()).optional(), domains: z.array(z.string()).optional(), trygestionContactoId: z.string().optional() });
 const eventSchema = z.object({ titulo: z.string().min(1), descripcion: z.string(), fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), fecha_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), tipo: z.string(), ambito: z.literal('externo'), ubicacion: z.string(), entidad_externa: z.string() });
 const ORIGIN_LINE = 'Origen: try! Comercial · prospecto · prioridad ';
 const LINK_LINE = 'Ficha en try! Comercial: ';
@@ -93,6 +93,14 @@ async function perform(db: PrismaClient, job: SyncOutbox, client: TrygestionClie
     const domains = [...new Set([...(payload.domains ?? []), normalizeDomain(company?.website), ...emails.map(email => normalizeDomain(companyWebsiteCandidate(email)))].filter((value): value is string => Boolean(value)))];
     if (!emails.length && !domains.length) throw new Skipped('SUPPRESSION_NO_EMAIL_OR_DOMAIN');
     for (const [type, values] of [['email', emails], ['dominio', domains]] as const) for (const value of values) await client.suprimir({ [type]: value, motivo: payload.motivo ?? 'Baja solicitada desde try! Comercial' }, `${key}:${type}:${createHash('sha256').update(value).digest('hex')}`);
+    return;
+  }
+  if (job.kind === 'CONTACT_DELETE') {
+    if (!payload.trygestionContactoId) throw new Skipped('CONTACT_NEVER_SYNCED');
+    try { await client.eliminarContacto(payload.trygestionContactoId, key); } catch (error) {
+      if (error instanceof TrygestionError && error.status === 404) return; // ya no estaba en trygestión
+      throw error;
+    }
     return;
   }
   const contact = job.kind === 'CONTACT_UPSERT' ? await db.contact.findUnique({ where: { id: job.entityId } }) : null;

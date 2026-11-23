@@ -9,7 +9,9 @@ import { enqueueCompany, enqueueContact } from '@/lib/trygestion/outbox';
 import { z } from 'zod';
 
 async function actor() { const session = await auth(); if (!session?.user?.id) throw new Error('No autenticado'); return session.user.id; }
-const companyInput = z.object({ name: z.string().min(2).max(160), country: z.nativeEnum(Country), region: z.string().max(100).optional(), city: z.string().max(100).optional(), sector: z.string().max(100).optional(), website: z.string().max(255).optional(), email: z.string().email().optional(), phone: z.string().max(40).optional(), nifNit: z.string().max(32).optional() });
+/** Los campos vacíos del formulario llegan como "": se tratan como no informados. */
+const optional = (schema: z.ZodString) => z.preprocess(value => typeof value === 'string' && value.trim() === '' ? undefined : typeof value === 'string' ? value.trim() : value, schema.optional());
+const companyInput = z.object({ name: z.string().trim().min(2).max(160), country: z.nativeEnum(Country), region: optional(z.string().max(100)), city: optional(z.string().max(100)), sector: optional(z.string().max(100)), website: optional(z.string().max(255)), email: optional(z.string().email()), phone: optional(z.string().max(40)), nifNit: optional(z.string().max(32)) });
 export async function createCompany(formData: FormData) {
   const userId = await actor(); const input = companyInput.parse(Object.fromEntries(formData));
   const normalizedName = normalizeText(input.name); const normalizedDomain = normalizeDomain(input.website);
@@ -18,14 +20,6 @@ export async function createCompany(formData: FormData) {
     if (duplicate) throw new Error(`Duplicado detectado: ${duplicate.name}`);
     const company = await tx.company.create({ data: { ...input, website: input.website || null, email: input.email || null, phone: input.phone || null, nifNit: input.nifNit || null, region: input.region || null, city: input.city || null, sector: input.sector || null, normalizedName, normalizedDomain, source: ContactSource.MANUAL, sourceDetail: 'Alta manual', ownerId: userId } });
     await tx.auditLog.create({ data: { userId, entityType: 'Company', entityId: company.id, action: 'CREATED' } }); await enqueueCompany(tx, company.id);
-  }); revalidatePath('/');
-}
-export async function createContact(formData: FormData) {
-  const userId = await actor();
-  const input = z.object({ companyId: z.string().cuid(), fullName: z.string().min(2), role: z.string().optional(), email: z.string().email().optional(), phone: z.string().optional(), legalBasis: z.nativeEnum(LegalBasis), requiresConsent: z.coerce.boolean().default(false) }).parse(Object.fromEntries(formData));
-  await prisma.$transaction(async tx => {
-    const contact = await tx.contact.create({ data: { ...input, role: input.role || null, email: input.email || null, phone: input.phone || null, source: ContactSource.MANUAL, sourceDetail: 'Alta manual', consentStatus: input.requiresConsent ? ConsentStatus.PENDING : ConsentStatus.NOT_REQUIRED } });
-    await tx.auditLog.create({ data: { userId, entityType: 'Contact', entityId: contact.id, action: 'CREATED' } }); await enqueueContact(tx, contact.id);
   }); revalidatePath('/');
 }
 export async function importCompanies(formData: FormData) {

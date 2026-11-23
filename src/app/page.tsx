@@ -1,15 +1,14 @@
 import Link from 'next/link';
 import { auth, signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { createCompany, createContact } from './actions';
+import { createCompany } from './actions';
 import { importCompaniesAction as importCompanies } from './import-action';
 
-const legalBases = ['LEGITIMATE_INTEREST', 'CONSENT', 'CONTRACT', 'PENDING'] as const;
 export default async function Home({ searchParams }: { searchParams: { q?: string } }) {
   const session = await auth();
   const q = searchParams.q?.trim();
   const companies = await prisma.company.findMany({ where: q ? { name: { contains: q, mode: 'insensitive' } } : undefined, include: { contacts: true }, orderBy: { createdAt: 'desc' }, take: 100 });
-  return <main className="mx-auto max-w-6xl p-5">
+  return <main className="mx-auto max-w-6xl p-3 sm:p-5">
     <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="page-title">Empresas</h1><p className="page-subtitle mb-0">Base comercial de prospectos y clientes</p></div>
       <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}><span className="mr-3 font-display text-sm text-slate-500">{session?.user?.email}</span><button className="btn-secondary">Cerrar sesión</button></form>
@@ -28,15 +27,21 @@ export default async function Home({ searchParams }: { searchParams: { q?: strin
       </div>
     </section>
     <section className="mt-7 rounded-lg bg-white p-5 shadow">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">Empresas ({companies.length})</h2><form><input className="w-64" name="q" defaultValue={q} placeholder="Buscar empresa" /><button className="ml-2">Buscar</button></form></div>
-      <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm">
-        <thead className="border-b"><tr><th className="p-2">Empresa</th><th>Ubicación</th><th>Sector</th><th>Origen</th><th>Contactos</th></tr></thead>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">Empresas ({companies.length})</h2><form><input className="w-full sm:w-64" name="q" defaultValue={q} placeholder="Buscar empresa" /><button className="ml-2">Buscar</button></form></div>
+      <p className="mt-2 text-sm text-slate-500">Los contactos se añaden, editan y borran dentro de la ficha de cada empresa.</p>
+      <ul className="mt-4 divide-y md:hidden">{companies.map(company => <li className="py-3" key={company.id}>
+        <Link className="font-semibold text-try-700 hover:underline [overflow-wrap:anywhere]" href={`/empresas/${company.id}`}>{company.name}</Link>{company.fictional && <span className="ml-2 badge badge-warning">Ficticia</span>}
+        <p className="text-sm text-slate-600">{[company.city ?? 'Municipio por verificar', company.country].join(', ')} · {company.sector ?? 'Sector pendiente'}</p>
+        <p className="text-sm">{company.phone && <a className="mr-3 font-medium text-try-700" href={`tel:${company.phone.replace(/[^\d+]/g, '')}`}>{company.phone}</a>}<span className="text-slate-500">{company.contacts.length} contacto{company.contacts.length === 1 ? '' : 's'}</span></p>
+      </li>)}</ul>
+      <div className="mt-4 hidden overflow-x-auto md:block"><table className="w-full text-left text-sm">
+        <thead className="border-b"><tr><th className="p-2">Empresa</th><th>Ubicación</th><th>Sector</th><th>Teléfono</th><th>Email</th><th>Contactos</th></tr></thead>
         <tbody>{companies.map(company => <tr className="border-b" key={company.id}>
           <td className="p-2 font-medium"><Link className="font-medium hover:underline" href={`/empresas/${company.id}`}>{company.name}</Link>{company.fictional && <span className="ml-2 badge badge-warning">Ficticia</span>}</td>
-          <td>{company.city}, {company.country}</td><td>{company.sector ?? '—'}</td><td>{company.source}</td>
-          <td><details><summary>{company.contacts.length}</summary><ul>{company.contacts.map(contact => <li key={contact.id}>{contact.fullName} · {contact.email ?? 'sin email'}</li>)}</ul>
-            <form action={createContact} className="mt-2 grid gap-2"><input type="hidden" name="companyId" value={company.id}/><input name="fullName" placeholder="Nombre contacto" required /><input name="role" placeholder="Cargo"/><input name="email" type="email" placeholder="Email"/><input name="phone" placeholder="Teléfono"/><select name="legalBasis">{legalBases.map(base => <option key={base}>{base}</option>)}</select><label className="text-xs"><input className="mr-1 w-auto" name="requiresConsent" type="checkbox"/>Requiere consentimiento</label><button>Añadir contacto</button></form>
-          </details></td>
+          <td>{company.city ?? 'Por verificar'}, {company.country}</td><td>{company.sector ?? '—'}</td>
+          <td>{company.phone ? <a className="text-try-700 hover:underline" href={`tel:${company.phone.replace(/[^\d+]/g, '')}`}>{company.phone}</a> : '—'}</td>
+          <td className="[overflow-wrap:anywhere]">{company.email ? <a className="text-try-700 hover:underline" href={`mailto:${company.email}`}>{company.email}</a> : '—'}</td>
+          <td><Link className="text-try-700 hover:underline" href={`/empresas/${company.id}#contactos`}>{company.contacts.length}</Link></td>
         </tr>)}</tbody>
       </table></div>
     </section>

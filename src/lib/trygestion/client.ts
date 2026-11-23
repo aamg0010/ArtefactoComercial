@@ -104,6 +104,8 @@ export class TrygestionClient {
     return rows.find(row => row.empresa_id === data.empresa_id && (data.email ? row.email?.toLowerCase() === data.email.toLowerCase() : normalizeText(row.nombre) === normalizeText(data.nombre) && (row.telefono ?? '') === (data.telefono ?? ''))) ?? null;
   }
   crearContacto(data: ContactoInput, key?: string) { return this.request('/contactos', linkedSchema, 'POST', data, undefined, key); }
+  /** trygestión hace un borrado lógico (deleted_at), recuperable desde su base de datos. */
+  eliminarContacto(id: string, key?: string) { return this.request(`/contactos/${encodeURIComponent(id)}`, acknowledgement, 'DELETE', undefined, undefined, key); }
   etapas() { return this.request('/pipeline/etapas', z.array(etapaSchema), 'GET', undefined, 'etapas'); }
   /** Finds the opportunity created by try! Comercial for a company by its reference (in the description) or legacy title. */
   async buscarOportunidad(empresaId: string, referencia: string, tituloAntiguo?: string) {
