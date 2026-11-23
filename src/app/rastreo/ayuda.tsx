@@ -7,7 +7,7 @@ export function ConsejosPerfil() {
   return <details className="rounded-xl border border-try-100 bg-try-50/60 p-4" open>
     <summary className="cursor-pointer font-display font-semibold text-try-900">💡 Consejos para crear perfiles y que las búsquedas sean más certeras</summary>
     <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
-      <li><b>Un perfil = un sector + un producto.</b> Mejor «Bodegas Matarraña → Athenea» que un perfil que lo mezcle todo. Así el guion y la puntuación encajan mejor.</li>
+      <li><b>Un perfil = un sector + un producto.</b> Mejor «Bodegas Matarraña → Athenea» o «Constructoras y transportistas Bajo Aragón → SaaS a medida» que un perfil que lo mezcle todo. <i>SaaS a medida</i> sirve para casi cualquier sector con procesos propios (obras, flota, talleres, servicios de campo). Así el guion y la puntuación encajan mejor.</li>
       <li><b>Municipios con su nombre oficial</b>, como aparece en el mapa y con tildes: <i>Alcañiz; Andorra; La Puebla de Híjar</i>. Cada municipio se busca por separado y una ejecución hace como máximo 20 búsquedas (municipios × provincias): mejor pocos municipios por perfil.</li>
       <li><b>Provincia oficial</b> (<i>Teruel</i>, <i>Zaragoza</i>). Si todos los municipios son de la misma provincia, pon solo esa: cada provincia de más multiplica las búsquedas.</li>
       <li><b>Comarcas</b>: solo sirven para clasificar las empresas, no filtran la búsqueda. Déjalo vacío o pon la comarca real; no escribas «Todas».</li>

@@ -22,7 +22,7 @@ export async function investigateCompany(db: PrismaClient, companyId: string) {
   const example = mockResearch(sources, company.sector, preferred, web.note);
   const report = await generateJson({
     system: researchInstructions,
-    prompt: JSON.stringify({ tarea: 'Investigación comercial con fuentes', sources, catalogo: catalog.map(item => item.line), webNote: web.note, formatoJSON: { ...example, sources: sources.map(source => ({ id: source.id, url: source.url, date: source.date })) } }),
+    prompt: JSON.stringify({ tarea: 'Investigación comercial con fuentes', sources, catalogo: catalog.map(item => ({ linea: item.line, queOfrece: item.description })), webNote: web.note, formatoJSON: { ...example, sources: sources.map(source => ({ id: source.id, url: source.url, date: source.date })) } }),
     schema: researchSchema(sources, catalog.map(item => item.line)),
   }, { db, companyId, purpose: 'research', mockResponse: example });
   const weights = await db.scoringWeights.findUnique({ where: { id: 'default' } }) ?? defaultWeights;
@@ -61,7 +61,7 @@ export async function generateCompanyScript(db: PrismaClient, companyId: string,
   const script = await generateJson({
     system: `${researchInstructions}\nGenera un guion comercial BORRADOR en español adaptado al país y rol. Usa las cinco plantillas sólo como estructura, nunca copies sus nombres, cifras, años, contactos o hechos de otras empresas. No escribas nombres de personas (ni del comercial ni de nadie): preséntate como "el equipo de try! company". Los únicos nombres propios permitidos son los de la ficha y estos: ${allowedNames.join(', ')}. No pongas cifras ni años que no estén en la ficha (tampoco duraciones como "15 minutos": di "una conversación breve"). El cliente compra productividad, rentabilidad, menos riesgo y capacidad de decisión. No afirmes hipótesis como hechos: plantéalas como preguntas. Usa exactamente la cadencia estándar. Cada email incluye try! company, motivo, BAJA, [TELÉFONO] y [WEB]. No insertes URLs o emails.
 Calidad: personaliza llamada y emails con al menos dos datos concretos de la ficha (actividad, señales o dolores) dichos con naturalidad. Cada email es distinto (primer contacto, aporte de valor, último seguimiento), breve (80-140 palabras), cercano y profesional, de usted; despierta curiosidad por lo que hacemos y termina con una pregunta concreta para tener una conversación breve. Nunca escribas al cliente frases internas como "hipótesis", "no hemos verificado", "borrador" o "revisión humana". Termina cada cuerpo con el pie: "try! company · [TELÉFONO] · [WEB]" y "Si prefiere no recibir más comunicaciones nuestras, responda BAJA."`,
-    prompt: JSON.stringify({ pais: company.country, empresa: company.name, ficha: research, producto: product.line, plantillas: templates.map(item => item.content), cadencia: file.cadencia_estandar, formatoJSON: scriptSkeleton(example) }),
+    prompt: JSON.stringify({ pais: company.country, empresa: company.name, ficha: research, producto: product.line, queOfreceElProducto: product.description, plantillas: templates.map(item => item.content), cadencia: file.cadencia_estandar, formatoJSON: scriptSkeleton(example) }),
     schema: generatedScriptSchema(research.sources, product.line, file.cadencia_estandar, allowedNames),
   }, { db, companyId, purpose: 'script', mockResponse: example });
   return db.$transaction(async tx => {
