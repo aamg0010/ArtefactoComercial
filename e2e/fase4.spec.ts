@@ -24,10 +24,10 @@ test('crear y ejecutar un perfil simulado, ver detectadas de hoy y abrir su fich
   const profile = page.getByRole('article', { name: 'Perfil E2E servicios', exact: true });
   await expect(profile).toBeVisible();
   await profile.getByText('Editar perfil', { exact: true }).click();
-  await profile.getByLabel('Códigos CNAE (opcional)', { exact: true }).fill('4520');
+  await profile.getByLabel('Códigos CNAE / CIIU (opcional)', { exact: true }).fill('4520');
   await profile.getByRole('button', { name: 'Guardar cambios', exact: true }).click();
   await profile.getByText('Editar perfil', { exact: true }).click();
-  await expect(profile.getByLabel('Códigos CNAE (opcional)', { exact: true })).toHaveValue('4520');
+  await expect(profile.getByLabel('Códigos CNAE / CIIU (opcional)', { exact: true })).toHaveValue('4520');
   await profile.getByRole('button', { name: 'Desactivar', exact: true }).click();
   await expect(profile.getByRole('button', { name: 'Ejecutar ahora', exact: true })).toBeDisabled();
   await profile.getByRole('button', { name: 'Activar', exact: true }).click();

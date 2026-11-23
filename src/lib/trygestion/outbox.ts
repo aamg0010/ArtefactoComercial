@@ -30,6 +30,10 @@ export async function enqueueContact(db: OutboxDb, contactId: string) {
   const revision = createHash('sha256').update(JSON.stringify([contact.fullName, contact.role, contact.email, contact.phone])).digest('hex');
   return enqueue(db, 'CONTACT_UPSERT', contactId, { companyId: contact.companyId }, revision);
 }
+/** El contacto ya está borrado aquí: se guarda su id de trygestión para borrarlo también allí. */
+export async function enqueueContactDelete(db: OutboxDb, contactId: string, trygestionContactoId: string) {
+  return enqueue(db, 'CONTACT_DELETE', contactId, { trygestionContactoId });
+}
 export async function enqueuePipeline(db: OutboxDb, companyId: string, stage: string, revision: string, reason?: string) {
   const closed = ['WON', 'LOST'].includes(stage);
   return enqueue(db, closed ? 'OPPORTUNITY_STATUS' : 'OPPORTUNITY_STAGE', companyId, closed ? { companyId, estado: stage === 'WON' ? 'ganada' : 'perdida', motivo: reason ?? 'Cambio desde try! Comercial' } : { companyId, stage }, revision);
