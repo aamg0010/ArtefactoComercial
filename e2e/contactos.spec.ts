@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { e2eEnvironment } from './environment';
+import { PrismaClient } from '@prisma/client';
+import { e2eDatabaseUrl, e2eEnvironment } from './environment';
 
 test('en la ficha se añade un contacto, no se duplica y se puede borrar', async ({ page }) => {
   await page.goto('/login');
@@ -34,4 +35,28 @@ test('en la ficha se añade un contacto, no se duplica y se puede borrar', async
   await card.getByRole('button', { name: 'Sí, borrar Compras E2E' }).click();
   await expect(page.getByRole('main').getByRole('status')).toContainText('Contacto borrado');
   await expect(contacts.getByRole('listitem').filter({ hasText: 'Compras E2E' })).toHaveCount(0);
+});
+
+test('se borra un contacto de los datos iniciales, cuyo id no es cuid', async ({ page }) => {
+  const db = new PrismaClient({ datasources: { db: { url: e2eDatabaseUrl } } });
+  let companyId: string;
+  try {
+    await db.contact.deleteMany({ where: { id: 'contact-e2e-id-legible' } });
+    await db.company.deleteMany({ where: { normalizedName: 'empresa ids legibles e2e' } });
+    const company = await db.company.create({ data: {
+      name: '[SIMULADA] Empresa ids legibles E2E', normalizedName: 'empresa ids legibles e2e', country: 'ES', fictional: true, acceptanceStatus: 'ACCEPTED',
+      contacts: { create: { id: 'contact-e2e-id-legible', fullName: 'Contacto inicial E2E', phone: '978000000', legalBasis: 'LEGITIMATE_INTEREST', consentStatus: 'NOT_REQUIRED' } },
+    } }); companyId = company.id;
+  } finally { await db.$disconnect(); }
+  await page.goto('/login');
+  await page.getByLabel('Email', { exact: true }).fill('comercial@try.company');
+  await page.getByLabel('Contraseña', { exact: true }).fill(e2eEnvironment.SEED_SALES_PASSWORD);
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page).toHaveURL('http://localhost:3100/');
+  await page.goto(`/empresas/${companyId}`);
+  const card = page.getByRole('region', { name: 'Personas de contacto' }).getByRole('listitem').filter({ hasText: 'Contacto inicial E2E' });
+  await card.getByText('Borrar', { exact: true }).click();
+  await card.getByRole('button', { name: 'Sí, borrar Contacto inicial E2E' }).click();
+  await expect(page.getByRole('main').getByRole('status')).toContainText('Contacto borrado');
+  await expect(card).toHaveCount(0);
 });

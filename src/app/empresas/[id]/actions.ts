@@ -10,7 +10,7 @@ import { acceptCompany, discardCompany, verifyProposal } from '@/lib/prospecting
 export async function companyAction(form: FormData) {
   const session = await auth();
   if (!session?.user?.id || session.user.role === 'DIRECTOR') throw new Error('No autorizado');
-  const companyId = z.string().cuid().parse(form.get('companyId'));
+  const companyId = z.string().trim().min(1).max(191).regex(/^[\w-]+$/).parse(form.get('companyId'));
   const action = z.enum(['research', 'priority', 'generate', 'approve', 'accept', 'discard']).parse(form.get('action'));
   let targetId = companyId;
   let failed = false;
@@ -21,7 +21,7 @@ export async function companyAction(form: FormData) {
     if (action === 'priority') await applySuggestedPriority(prisma, companyId, session.user.id);
     if (action === 'generate') await generateCompanyScript(prisma, companyId, z.string().min(1).parse(form.get('product')));
     if (action === 'approve') {
-      const scriptId = z.string().cuid().parse(form.get('scriptId'));
+      const scriptId = z.string().trim().min(1).max(191).regex(/^[\w-]+$/).parse(form.get('scriptId'));
       await prisma.script.findFirstOrThrow({ where: { id: scriptId, companyId } });
       await approveCompanyScript(prisma, scriptId, session.user.id);
     }

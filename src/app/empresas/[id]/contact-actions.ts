@@ -16,7 +16,9 @@ async function editor() {
 }
 /** Los campos vacíos del formulario llegan como "": se tratan como no informados. */
 const optional = (schema: z.ZodString) => z.preprocess(value => typeof value === 'string' && value.trim() === '' ? undefined : typeof value === 'string' ? value.trim() : value, schema.optional());
-const companyId = z.string().cuid();
+/** Ids de la base: cuid, o legibles en los datos importados al inicio (p. ej. «contact-la-chipranesca-s-c-l»). */
+const recordId = z.string().trim().min(1).max(191).regex(/^[\w-]+$/);
+const companyId = recordId;
 function done(id: string, result: string): never {
   revalidatePath(`/empresas/${id}`); revalidatePath('/'); revalidatePath('/mi-dia');
   redirect(`/empresas/${id}?${result}#contactos`);
@@ -49,7 +51,7 @@ export async function addContactAction(form: FormData) {
 export async function deleteContactAction(form: FormData) {
   const userId = await editor();
   const id = companyId.parse(form.get('companyId'));
-  const contact = await prisma.contact.findFirst({ where: { id: z.string().cuid().parse(form.get('contactId')), companyId: id } });
+  const contact = await prisma.contact.findFirst({ where: { id: recordId.parse(form.get('contactId')), companyId: id } });
   if (!contact) done(id, 'error=contacto-no-encontrado');
   await prisma.$transaction(async tx => {
     // Las tareas o emails que lo citen se conservan: solo se borra la persona de contacto.
@@ -64,7 +66,7 @@ export async function consentAction(form: FormData) {
   const userId = await editor();
   const id = companyId.parse(form.get('companyId'));
   const status = z.enum(['GRANTED', 'WITHDRAWN', 'PENDING']).parse(form.get('status'));
-  const contact = await prisma.contact.findFirst({ where: { id: z.string().cuid().parse(form.get('contactId')), companyId: id } });
+  const contact = await prisma.contact.findFirst({ where: { id: recordId.parse(form.get('contactId')), companyId: id } });
   if (!contact) done(id, 'error=contacto-no-encontrado');
   await prisma.$transaction(async tx => {
     await tx.contact.update({ where: { id: contact.id }, data: { consentStatus: status, requiresConsent: true } });
