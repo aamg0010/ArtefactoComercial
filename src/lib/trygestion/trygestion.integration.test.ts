@@ -13,7 +13,9 @@ import { startTrygestionMock } from './testing/mock-server';
 const url = process.env.TEST_DATABASE_URL;
 const enabled = isSafeTestDatabase(url, process.env.DATABASE_URL);
 const prisma = enabled ? new PrismaClient({ datasources: { db: { url } } }) : undefined;
-const T0 = new Date('2026-11-23T09:00:00.000Z');
+// Referencia relativa al momento real: con una fecha fija, al pasar esa hora los trabajos
+// recién encolados (nextAttemptAt = ahora) quedaban "en el futuro" y no se procesaban.
+const T0 = new Date(Date.now() + 60_000);
 const later = (minutes: number) => new Date(T0.getTime() + minutes * 60_000);
 
 describe.runIf(enabled)('integración con trygestión (mock local con el comportamiento de producción)', () => {
