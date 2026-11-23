@@ -15,6 +15,7 @@ export async function prospectingAction(form: FormData) {
   if (!session?.user?.id || session.user.role === 'DIRECTOR') throw new Error('No autorizado');
   const action = z.enum(['save', 'toggle', 'run']).parse(form.get('action'));
   let failed = false;
+  let runIds: string[] = [];
   try {
     if (action !== 'run' && session.user.role !== 'ADMIN') throw new Error('Sólo administración puede configurar perfiles');
     const id = String(form.get('profileId') ?? '');
@@ -34,10 +35,11 @@ export async function prospectingAction(form: FormData) {
       await prisma.searchProfile.update({ where: { id }, data: { active: !profile.active } });
     } else {
       if (!id) throw new Error('Falta perfil');
-      await runProspecting(id, { db: prisma });
+      runIds = (await runProspecting(id, { db: prisma })).map(run => run.id);
     }
     await prisma.auditLog.create({ data: { userId: session.user.id, entityType: 'SearchProfile', entityId: id || 'new', action: action.toUpperCase() } });
   } catch { failed = true; }
   revalidatePath('/rastreo'); revalidatePath('/');
-  redirect(`/rastreo?${failed ? 'error=1' : 'done=1'}`);
+  // Tras «Ejecutar ahora» la página muestra el resumen de esa ejecución.
+  redirect(`/rastreo?${failed ? 'error=1' : 'done=1'}${runIds.length ? `&ejecucion=${runIds.join(',')}` : ''}`);
 }

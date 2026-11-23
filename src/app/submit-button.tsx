@@ -12,6 +12,6 @@ export function SubmitButton({ children, pendingText = 'Procesando…', notice, 
   const mine = pending && (!props.name || data?.get(props.name) === props.value);
   return <>
     <button {...props} type="submit" disabled={disabled || pending} aria-busy={mine}>{mine ? pendingText : children}</button>
-    {mine && notice && <p role="status" aria-live="polite" className="mt-2 rounded-lg bg-try-50 px-3 py-2 text-sm text-try-800">{notice}</p>}
+    {mine && notice && <p role="status" aria-live="polite" className="mt-2 w-full basis-full rounded-lg bg-try-50 px-3 py-2 text-sm text-try-800">{notice}</p>}
   </>;
 }

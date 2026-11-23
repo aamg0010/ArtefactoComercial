@@ -48,6 +48,8 @@ async function linkCompany(db: PrismaClient, id: string, remoteId: string) {
 async function companyUpsert(db: PrismaClient, id: string, client: TrygestionClient, key: string) {
   let company = await db.company.findUnique({ where: { id }, include: { scores: { orderBy: { createdAt: 'desc' }, take: 1 }, contacts: true } });
   if (!company || company.acceptanceStatus !== 'ACCEPTED') throw new Skipped('COMPANY_NOT_ACCEPTED_OR_DELETED');
+  // Las empresas simuladas (datos de prueba) nunca se envían a trygestión.
+  if (company.fictional) throw new Skipped('FICTIONAL_COMPANY');
   let remote = company.trygestionEmpresaId ? await client.empresa(company.trygestionEmpresaId) : await client.buscarEmpresa({ cif: company.nifNit, web: company.website, nombre: company.name });
   if (!remote) {
     const created = await client.crearEmpresa({ nombre: company.name, cif: company.nifNit, web: remoteWebsite(company.website), ciudad: company.city, provincia: company.region, pais: company.country, telefono: company.phone, email: company.email, sector: company.sector, notas: originNotes(null, company.priority, company.id) }, `${key}:company`);
