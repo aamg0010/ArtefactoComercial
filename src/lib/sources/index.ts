@@ -5,6 +5,7 @@ import { StubSourceAdapter } from './stubs';
 import { OpenStreetMapAdapter, DatabaseOverpassGate } from './openstreetmap';
 import { EinformaAdapter, einformaCredentials } from './einforma';
 export { einformaCredentials } from './einforma';
+import { RuesAdapter } from './rues';
 import type { PrismaClient } from '@prisma/client';
 import { sourceNames, type SourceAdapter } from './types';
 
@@ -23,6 +24,9 @@ export function sourceAdapter(source: typeof sourceNames[number], db?: PrismaCli
     if (credentials) return new EinformaAdapter(credentials);
     return { id: 'einforma', search: async () => { throw new SourceError('EINFORMA_NOT_CONFIGURED'); } };
   }
+  if (source === 'rues') return new RuesAdapter(db ? {
+    knownRefs: async () => new Set((await db.companySource.findMany({ where: { source: 'rues' }, select: { sourceRef: true } })).map(row => row.sourceRef)),
+  } : {});
   if (source === 'csv') return new CsvSourceAdapter();
   if (source === 'openstreetmap') return new OpenStreetMapAdapter(db ? { gate: new DatabaseOverpassGate(db) } : {});
   return new StubSourceAdapter(source);

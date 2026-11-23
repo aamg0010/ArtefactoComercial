@@ -54,7 +54,7 @@ it('CSV reutiliza el parser pero descarta nombres y emails de personas', () => {
   expect(result[0]).toMatchObject({ name: 'Empresa', city: 'Alcañiz', corporatePhone: '976632132', source: 'csv' });
   expect(JSON.stringify(result)).not.toContain('Ana Personal'); expect(JSON.stringify(result)).not.toContain('ana@example.test');
 });
-it.each(['apollo', 'rues', 'linkedin-export'] as const)('%s es un stub explícito sin red', async source => {
+it.each(['apollo', 'linkedin-export'] as const)('%s es un stub explícito sin red', async source => {
   const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
   await expect(sourceAdapter(source).search(criteria)).rejects.toThrow('SOURCE_NOT_IMPLEMENTED'); expect(fetcher).not.toHaveBeenCalled();
 });

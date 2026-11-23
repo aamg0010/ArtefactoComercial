@@ -15,7 +15,8 @@ export function ConsejosPerfil() {
       <li><b>Máximo de resultados</b>: empieza con 10–20, revisa la calidad y amplía si merece la pena.</li>
       <li><b>Fuentes</b>: OpenStreetMap es gratuito y público, pero a veces le faltan web o teléfono. Google Places es más completo (necesita clave) y sus empresas quedan pendientes de aceptar. CSV, si tienes un listado propio.</li>
       <li><b>eInforma</b> busca cada palabra clave en la <b>razón social</b> de todas las empresas de España y se queda con las de tus provincias (no filtra por municipio ni por CNAE). Funciona mejor con palabras que suelen estar en el nombre: <i>almazara, cooperativa, bodega, cárnica, transportes, construcciones</i>. Las empresas entran con el municipio «por verificar»; búscalas también en Google o investígalas para completarlas. Buscar no gasta saldo de eInforma.</li>
-      <li><b>Códigos CNAE</b>: de momento no filtran la búsqueda; úsalos como referencia.</li>
+      <li><b>RUES (Colombia)</b> usa los datos abiertos de las cámaras de comercio: sociedades y entidades activas que han renovado la matrícula este año o el anterior (nunca personas naturales). En <i>Provincias</i> pon el <b>departamento</b> (<i>Antioquia; Córdoba</i>) o la ciudad sede de la cámara (<i>Montería</i>): el RUES abierto no trae municipio, así que las empresas entran con el municipio «por verificar». Busca por <b>código CIIU</b> (p. ej. <i>0141</i> ganado bovino, <i>0144</i> porcino, <i>0145</i> avícola, <i>1011</i> cárnicos, <i>1040</i> lácteos) o por palabras de la razón social (<i>ganadera, agropecuaria, hacienda</i>). Cada ejecución trae empresas nuevas, sin repetir las que ya trajo.</li>
+      <li><b>Códigos CNAE / CIIU</b>: en España todavía no filtran la búsqueda (úsalos como referencia); en Colombia los usa el RUES. Con 2 dígitos abarcas todo el grupo (<i>01</i> = agricultura y ganadería).</li>
       <li><b>Si no sale nada</b>: revisa la ortografía del municipio y la provincia, prueba una palabra clave más concreta y, si el resumen dice que OpenStreetMap está saturado, vuelve a intentarlo en unos minutos.</li>
     </ol>
   </details>;
@@ -31,6 +32,10 @@ const explicaciones: [RegExp, string][] = [
   [/^EINFORMA_ONLY_SPAIN$/, 'eInforma solo tiene empresas de España: desmárcalo en perfiles de Colombia.'],
   [/^EINFORMA_(NETWORK_ERROR|HTTP_(429|50\d))$/, 'eInforma no responde o está saturado. Vuelve a ejecutar en unos minutos.'],
   [/^EINFORMA_/, 'eInforma devolvió una respuesta inesperada. Inténtalo más tarde.'],
+  [/^RUES_ONLY_COLOMBIA$/, 'El RUES solo tiene empresas de Colombia: desmárcalo en perfiles de España.'],
+  [/^RUES_NO_CHAMBER$/, 'El RUES no reconoce ningún departamento del perfil. En Provincias escribe el departamento (p. ej. Antioquia; Córdoba) o la ciudad sede de la cámara de comercio (p. ej. Montería).'],
+  [/^RUES_(NETWORK_ERROR|HTTP_(429|50\d))$/, 'Datos abiertos de Colombia (RUES) no responde o está saturado. Vuelve a ejecutar en unos minutos.'],
+  [/^RUES_/, 'El RUES devolvió una respuesta inesperada. Inténtalo más tarde.'],
   [/^SOURCE_NOT_IMPLEMENTED:(.+)$/, 'Una de las fuentes marcadas todavía no está disponible. Desmárcala en el perfil.'],
   [/^GOOGLE_LIVE_DEDUP_UNAVAILABLE$/, 'No se pudo comprobar duplicados contra Google; las empresas nuevas se revisarán igualmente.'],
 ];
