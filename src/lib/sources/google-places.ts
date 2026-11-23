@@ -6,11 +6,13 @@ import { normalizeText } from '../normalization';
 export const placesFieldMask = 'places.id,places.displayName,places.addressComponents,places.formattedAddress,places.websiteUri,places.internationalPhoneNumber,places.primaryType,places.attributions,nextPageToken';
 const placeSchema = z.object({
   id: z.string(), displayName: z.object({ text: z.string() }),
-  addressComponents: z.array(z.object({ longText: z.string(), shortText: z.string().optional(), types: z.array(z.string()) })).optional(),
+  // Google omite a veces `types` (o el texto) en partes de la dirección, p. ej. «S N, Carretera…».
+  addressComponents: z.array(z.object({ longText: z.string().default(''), shortText: z.string().optional(), types: z.array(z.string()).default([]) })).optional(),
   formattedAddress: z.string().optional(), websiteUri: z.string().optional(), internationalPhoneNumber: z.string().optional(), primaryType: z.string().optional(),
   attributions: z.array(z.object({ provider: z.string().optional(), providerUri: z.string().optional() })).optional(),
 });
-const responseSchema = z.object({ places: z.array(placeSchema).default([]), nextPageToken: z.string().optional() });
+// Cada lugar se valida por separado: uno mal formado se descarta sin perder el resto de la búsqueda.
+const responseSchema = z.object({ places: z.array(z.unknown()).default([]), nextPageToken: z.string().optional() });
 type Dependencies = { fetcher?: typeof fetch; pause?: (ms: number) => Promise<unknown>; maxPages?: number; maxQueries?: number };
 export class SourceError extends Error { constructor(public readonly code: string) { super(code); } }
 
@@ -47,7 +49,7 @@ export class GooglePlacesAdapter implements SourceAdapter {
     const component = (type: string) => place.addressComponents?.find(item => item.types.includes(type));
     const detectedCountry = component('country')?.shortText;
     if (detectedCountry !== country) return null;
-    return candidateSchema.parse({
+    const parsed = candidateSchema.safeParse({
       name: place.displayName.text, city: component('locality')?.longText ?? component('postal_town')?.longText ?? component('administrative_area_level_3')?.longText ?? fallback.city,
       province: component(country === 'CO' ? 'administrative_area_level_1' : 'administrative_area_level_2')?.longText ?? fallback.province, country,
       address: place.formattedAddress ?? null, website: place.websiteUri ?? null, corporatePhone: place.internationalPhoneNumber ?? null,
@@ -55,6 +57,7 @@ export class GooglePlacesAdapter implements SourceAdapter {
       sourceUrl: `https://www.google.com/maps/search/?api=1&query=place&query_place_id=${encodeURIComponent(place.id)}`,
       attributions: place.attributions?.filter(item => item.provider && item.providerUri).map(item => ({ displayName: item.provider, uri: item.providerUri })),
     });
+    return parsed.success ? parsed.data : null;
   }
 
   async search(criteria: SearchCriteria) {
@@ -73,7 +76,10 @@ export class GooglePlacesAdapter implements SourceAdapter {
           pageSize: Math.min(20, criteria.maxResults - candidates.length), ...(pageToken ? { pageToken } : {}),
         }));
         if (!parsed.success) throw new SourceError('GOOGLE_RESPONSE_INVALID');
-        for (const place of parsed.data.places) {
+        for (const raw of parsed.data.places) {
+          const valid = placeSchema.safeParse(raw);
+          if (!valid.success) continue;
+          const place = valid.data;
           if (seen.has(place.id)) continue;
           const candidate = this.candidate(place, query, criteria.country);
           if (candidate && criteria.municipalities.some(city => normalizeText(city) === normalizeText(candidate.city)) && criteria.provinces.some(province => normalizeText(province) === normalizeText(candidate.province))) { candidates.push(candidate); seen.add(place.id); }
