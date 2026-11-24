@@ -15,6 +15,16 @@ export function trygestionConfiguration(env: Record<string, string | undefined> 
   } catch { throw new TrygestionError('INVALID_CONFIGURATION'); }
 }
 const id = z.union([z.string().min(1), z.number()]).transform(String);
+export const replyCursorSchema = z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/).refine(value => {
+  const date = new Date(value.replace(' ', 'T') + 'Z');
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 19).replace('T', ' ') === value;
+});
+export const respuestaSchema = z.object({
+  id: z.string().uuid(), envio_id: z.string().min(1), external_ref: z.string().nullable(), oportunidad_id: z.string().nullable(),
+  remitente: z.string().email().transform(value => value.toLowerCase()), asunto: z.string(), recibido_en: z.string().datetime({ offset: true }),
+  resumen: z.string().nullable(), categoria: z.string().nullable(), prioridad: z.enum(['baja', 'media', 'alta', 'urgente']).nullable(),
+  extracto: z.string().max(2000).nullable(), metodo: z.enum(['hilo', 'asunto']), creado_en: replyCursorSchema,
+});
 export const empresaSchema = z.object({ id, nombre: z.string(), cif: z.string().nullish(), web: z.string().nullish(), notas: z.string().nullish() }).passthrough();
 const linkedSchema = z.object({ id }).passthrough();
 export const etapaSchema = z.object({ id, nombre: z.string() }).passthrough();
@@ -63,6 +73,12 @@ export class TrygestionClient {
     } catch { throw new TrygestionError('INVALID_RESPONSE', response.status); }
   }
   estado() { return this.request('/comercial/estado', z.object({ tenant: z.union([z.string(), z.number(), z.record(z.unknown())]), smtp: z.boolean(), ia: z.boolean(), googleCalendar: z.boolean(), etapas: z.array(etapaSchema) })); }
+  async respuestas(desde?: string) {
+    if (!this.enabled) return [];
+    const query = new URLSearchParams({ limite: '100', ...(desde ? { desde: replyCursorSchema.parse(desde) } : {}) });
+    try { return await this.request(`/comercial/respuestas?${query}`, z.array(respuestaSchema).max(100), 'GET', undefined, 'respuestas'); }
+    catch (error) { if (error instanceof TrygestionError && error.status === 404) return []; throw error; }
+  }
   private empresasCache: z.infer<typeof empresaSchema>[] | null = null;
   /** trygestión only filters `search` by name, so the tenant list is read once per client and matched locally. */
   async listarEmpresas() {

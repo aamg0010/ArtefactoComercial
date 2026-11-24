@@ -1,3 +1,4 @@
+import { ReplyCards } from '../../pipeline/reply-cards';
 import { trygestionEmpresaUrl, trygestionPipelineUrl } from '@/lib/trygestion/links';
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
@@ -36,6 +37,7 @@ const okMessages: Record<string, string> = {
 };
 export default async function CompanyDetail({ params, searchParams }: { params: { id: string }; searchParams: { error?: string; done?: string; ok?: string } }) {
   const session = await auth();
+  const replies = await prisma.emailReply.findMany({ where: { companyId: params.id }, include: { company: true }, orderBy: [{ status: 'asc' }, { receivedAt: 'desc' }] });
   const canEdit = Boolean(session?.user?.id) && session?.user?.role !== 'DIRECTOR';
   const company = await prisma.company.findUnique({ where: { id: params.id }, include: {
     contacts: true, sourceIdentities: true, evidence: { orderBy: { createdAt: 'desc' } }, researchReports: { orderBy: { version: 'desc' }, include: { score: true } }, scripts: { orderBy: { version: 'desc' } },
@@ -57,6 +59,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
         <a className="inline-flex items-center gap-1 rounded-xl border border-try-200 bg-white px-3 py-2 font-display text-sm font-medium text-try-700 hover:border-try-500" href={trygestionPipelineUrl()} target="_blank" rel="noopener noreferrer">Pipeline de trygestión ↗</a>
       </div>
     </section>}
+    <section aria-label="Respuestas recibidas" className="card p-4"><h2 className="text-lg font-semibold">Respuestas recibidas</h2><ReplyCards replies={replies} canEdit={canEdit}/>{!replies.length && <p>No hay respuestas recibidas.</p>}</section>
     <PlacesView companyId={company.id} country={company.country}/>
     {searchParams.error && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">{errorMessages[searchParams.error] ?? 'No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.'}</p>}
     {(searchParams.done || searchParams.ok) && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-emerald-900">{okMessages[searchParams.ok ?? ''] ?? 'Operación completada.'}</p>}

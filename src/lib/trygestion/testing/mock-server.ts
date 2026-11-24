@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:http';
 
 type RecordData = Record<string, unknown> & { id: string };
 export type MockState = {
-  companies: RecordData[]; contacts: RecordData[]; opportunities: RecordData[]; activities: RecordData[];
+  replies: RecordData[]; companies: RecordData[]; contacts: RecordData[]; opportunities: RecordData[]; activities: RecordData[];
   events: RecordData[]; emails: RecordData[]; suppressions: RecordData[];
   requests: { method: string; path: string; body: Record<string, unknown>; key?: string }[];
   failures: Map<string, number[]>; stages: { id: string; nombre: string; tipo_final: string | null }[]; iaJson: unknown;
@@ -23,7 +23,7 @@ export type MockState = {
 export async function startTrygestionMock(port = 0) {
   const token = 'trygestion-local-test-token'; let sequence = 0;
   const defaultStages: [string, string | null][] = [['Prospecto', null], ['Contacto inicial', null], ['Propuesta enviada', null], ['Negociacion', null], ['Compromiso verbal', null], ['Cerrado ganado', 'ganada'], ['Cerrado perdido', 'perdida']];
-  const state: MockState = { companies: [], contacts: [], opportunities: [], activities: [], events: [], emails: [], suppressions: [], requests: [], failures: new Map(),
+  const state: MockState = { replies: [], companies: [], contacts: [], opportunities: [], activities: [], events: [], emails: [], suppressions: [], requests: [], failures: new Map(),
     stages: defaultStages.map(([nombre, tipo_final], index) => ({ id: `stage-${index + 1}`, nombre, tipo_final })), iaJson: { ok: true } };
   const nextId = (prefix: string) => `${prefix}-${String(++sequence).padStart(4, '0')}-0000-4000-8000-000000000000`;
   const server: Server = createServer(async (request, response) => {
@@ -38,6 +38,11 @@ export async function startTrygestionMock(port = 0) {
     const finish = (value: unknown, status = 200) => send(status, value);
     const segments = path.split('/').filter(Boolean);
 
+    if (path === '/comercial/respuestas' && method === 'GET') {
+      const desde = url.searchParams.get('desde');
+      if (desde && !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(desde)) { finish({ error: 'desde inválido' }, 400); return; }
+      finish({ respuestas: state.replies.filter(row => !desde || String(row.creado_en) >= desde).sort((a,b) => String(a.creado_en).localeCompare(String(b.creado_en))).slice(0, Math.min(100, Number(url.searchParams.get('limite') ?? 100))) }); return;
+    }
     if (path === '/comercial/estado' && method === 'GET') { finish({ tenant: 'Tenant de pruebas local', smtp: true, ia: true, googleCalendar: true, etapas: state.stages }); return; }
     if (path === '/comercial/ia/generar' && method === 'POST') { finish({ json: state.iaJson, model: 'tenant-mock-model', usage: { input_tokens: 12, output_tokens: 20 } }); return; }
     if (path === '/comercial/email/enviar' && method === 'POST') {

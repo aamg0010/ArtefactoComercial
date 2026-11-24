@@ -27,6 +27,7 @@ const results = ['Contactado', 'No contesta', 'Buzón', 'Interesado', 'Reunión 
 type Content = Parameters<typeof ScriptView>[0]['content'];
 
 export default async function MyDay({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const newReplies = await prisma.emailReply.count({ where: { status: 'NEW' } });
   const day = validDay(searchParams.fecha);
   let filters = filtersSchema.parse(searchParams);
   const session = await auth();
@@ -54,13 +55,14 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
     return <article id={`tarea-${task.id}`} key={task.id} className={`card scroll-mt-4 p-4 ${selected ? 'border-try-500 ring-2 ring-try-500' : ''}`}>
       {selected && <p role="status" className="mb-2 font-semibold">Email preparado desde la ficha de {task.company.name}</p>}
       <h3 className="font-semibold"><Link className="font-medium hover:underline" href={`/empresas/${task.companyId}`}><span className={`badge badge-${(task.company.priority ?? 'C').toLowerCase()} mr-2 align-middle`}>{task.company.priority ?? 'Sin prioridad'}</span>{task.company.name}</Link></h3>
-      <p>{task.title}{task.dueAt && taskDate(task.dueAt)! > day && <span className="text-slate-500"> · para el {taskDate(task.dueAt)!.split('-').reverse().join('/')}</span>}</p>
+      {task.result && <p className="whitespace-pre-wrap text-sm text-slate-600">{task.result}</p>}<p>{task.title}{task.dueAt && taskDate(task.dueAt)! > day && <span className="text-slate-500"> · para el {taskDate(task.dueAt)!.split('-').reverse().join('/')}</span>}</p>
       {task.script && <details className="mt-2"><summary>Guion y emails</summary><ScriptView content={task.script.content as Content}/></details>}
       {canEdit && task.type === 'EMAIL' && task.script?.status === 'APPROVED' && email && (enabled || selected) && <EmailApproval taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email} firma={firma} open={selected} enabled={enabled}/>}
       {canEdit && <form action={recordTaskResult} className="mt-3 flex flex-wrap gap-2"><input type="hidden" name="taskId" value={task.id}/><fieldset className="w-full"><legend>Reunión: fecha y hora (zona del calendario)</legend><label>Fecha<input type="date" name="meetingDate"/></label><label>Hora<input type="time" name="meetingTime"/></label><label>Ubicación<input name="meetingLocation"/></label></fieldset>{results.map(result => <SubmitButton key={result} name="result" value={result} pendingText="Guardando…">{result}</SubmitButton>)}</form>}
     </article>;
   })}</div></section>;
   return <main className="mx-auto max-w-5xl p-3 [overflow-wrap:anywhere] sm:p-5"><h1 className="page-title">Mi día</h1>
+    {newReplies > 0 && <p role="status" className="my-4 rounded-xl bg-try-50 p-3">Tienes {newReplies} respuestas nuevas de clientes · <Link className="underline" href="/pipeline">Ver en el Pipeline</Link></p>}
     <form method="get" className="card my-4 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
       <label className="min-w-0">Fecha<input className="w-full min-w-0" name="fecha" type="date" defaultValue={day}/></label>
       <label className="min-w-0">Buscar<input className="w-full min-w-0" name="buscar" defaultValue={filters.buscar} placeholder="Empresa, tarea, municipio o región"/></label>
