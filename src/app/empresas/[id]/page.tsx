@@ -9,6 +9,8 @@ import { auth } from '@/auth';
 import { PlacesView } from './places-view';
 import { CompanyContact } from './company-contact';
 import { SubmitButton } from '../../submit-button';
+import { prepareEmail } from './email-actions';
+import { isSuppressed } from '@/lib/suppression';
 
 const pendingFor: Record<string, { pendingText: string; notice?: string }> = {
   research: { pendingText: 'Investigando…', notice: 'Investigando la empresa (su web y fuentes públicas). Puede tardar unos minutos: no cierres ni recargues la página.' },
@@ -21,6 +23,7 @@ export const dynamic = 'force-dynamic';
 const factorLabels: Record<string, string> = { sector: 'Encaje de sector', size: 'Tamaño', intent: 'Intención', contact: 'Accesibilidad del contacto', proximity: 'Proximidad geográfica', crossSell: 'Venta cruzada' };
 const fieldLabels: Record<string, string> = { name: 'Nombre', city: 'Municipio', website: 'Web', phone: 'Teléfono corporativo', email: 'Email corporativo' };
 const errorMessages: Record<string, string> = {
+  'email-no-preparado': 'No se pudo preparar el email. Comprueba que la empresa esté aceptada, sin baja y el guion aprobado.',
   'contacto-duplicado': 'Ese contacto ya existe en esta empresa (mismo nombre, email o teléfono). No se ha creado otra vez.',
   'contacto-invalido': 'Revisa el contacto: el nombre es obligatorio y, si pones email, tiene que ser válido.',
   'contacto-no-encontrado': 'Ese contacto ya no existe (quizá lo borró otra persona).',
@@ -38,6 +41,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     contacts: true, sourceIdentities: true, evidence: { orderBy: { createdAt: 'desc' } }, researchReports: { orderBy: { version: 'desc' }, include: { score: true } }, scripts: { orderBy: { version: 'desc' } },
   } });
   if (!company) notFound();
+  const suppressed = await isSuppressed(prisma, company.id);
   const products = await prisma.product.findMany({ where: { active: true }, orderBy: { line: 'asc' } });
   const latest = company.researchReports.find(report => report.origin === 'AI');
   const score = latest?.score;
@@ -92,7 +96,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
       </form>}
       {company.scripts.map(script => <article className="mt-4 border-t pt-3" key={script.id}>
         <h3 className="font-semibold">Guion versión {script.version} · {script.author} · {script.status === 'BORRADOR' ? 'BORRADOR' : 'Aprobado'}</h3>
-        <ScriptView content={script.content as GeneratedScript}/>
+        <ScriptView content={script.content as GeneratedScript} emailAction={index => suppressed ? <p>La empresa ha solicitado la baja y no puede recibir emails.</p> : script.status === 'BORRADOR' ? <p>Aprueba el guion para poder enviar sus emails</p> : company.acceptanceStatus !== 'ACCEPTED' ? <p>Acepta la empresa para poder enviar sus emails.</p> : canEdit ? <form action={prepareEmail} className="mt-2"><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><input type="hidden" name="emailIndex" value={index}/><SubmitButton className="btn-secondary" pendingText="Preparando…">Enviar desde Mi día</SubmitButton></form> : null}/>
         {script.status === 'BORRADOR' && script.version === company.scripts[0].version && <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><SubmitButton name="action" value="approve" {...pendingFor.approve}>Aprobar guion</SubmitButton></form>}
       </article>)}
     </section>

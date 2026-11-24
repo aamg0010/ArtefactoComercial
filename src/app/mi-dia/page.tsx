@@ -1,11 +1,16 @@
 import { prisma } from '@/lib/prisma';
 import { recordTaskResult } from './actions';
-import { madridDate, taskDate } from '@/lib/dates';
+import { taskDate } from '@/lib/dates';
 import { ScriptView } from './script-view';
 import Link from 'next/link';
 import { EmailApproval } from './email-approval';
 import { trygestionConfiguration } from '@/lib/trygestion/client';
 import { auth } from '@/auth';
+import { SubmitButton } from '../submit-button';
+import { filtersSchema, filterTasks, productLines, taskTypeLabels, validDay } from '@/lib/mi-dia/filters';
+import { safeId, taskEmail } from '@/lib/mi-dia/script-email';
+import { isSuppressed } from '@/lib/suppression';
+import { TaskFocus } from './task-focus';
 
 const emailErrors: Record<string, string> = {
   EMAIL_RECIPIENT_NOT_COMPANY_CONTACT: 'el destinatario no es el email de la empresa ni de uno de sus contactos.',
@@ -19,19 +24,59 @@ const emailErrors: Record<string, string> = {
   EMAIL_COPY_ONLY: 'el envío por trygestión no está activado.',
 };
 const results = ['Contactado', 'No contesta', 'Buzón', 'Interesado', 'Reunión agendada', 'No interesado', 'Baja'];
-type Content = { llamada?: { apertura?: string; motivo?: string; pregunta_clave?: string; propuesta_valor?: string; objeciones?: Record<string, string>; cierre?: string; mensaje_voz?: string }; emails?: { dia: number; asunto: string; cuerpo: string }[] };
+type Content = Parameters<typeof ScriptView>[0]['content'];
 
-export default async function MyDay({ searchParams }: { searchParams: { fecha?: string; email?: string } }) {
-  const day = searchParams.fecha ?? madridDate();
+export default async function MyDay({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const day = validDay(searchParams.fecha);
+  let filters = filtersSchema.parse(searchParams);
   const session = await auth();
   const me = session?.user?.id ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, signatureName: true, signatureTitle: true } }) : null;
   const firma = { nombre: me?.signatureName ?? me?.name ?? '', cargo: me?.signatureTitle ?? '' };
   const limite = new Date(`${day}T23:59:59.999Z`); limite.setUTCDate(limite.getUTCDate() + 7);
-  const all = await prisma.task.findMany({ where: { status: 'PENDING', company: { acceptanceStatus: 'ACCEPTED' }, OR: [{ dueAt: { lte: limite } }, { dueAt: null }] }, include: { company: { include: { contacts: true } }, script: true, cadenceStep: true }, orderBy: [{ company: { priority: 'asc' } }, { dueAt: 'asc' }] });
-  const today = all.filter((task) => taskDate(task.dueAt) === day);
-  const overdue = all.filter((task) => task.dueAt && taskDate(task.dueAt)! < day);
-  const upcoming = all.filter((task) => task.dueAt && taskDate(task.dueAt)! > day);
-  const planning = all.filter((task) => !task.dueAt);
-  const section = (title: string, tasks: typeof all) => <section aria-label={title} className="mb-8"><h2 className="text-lg font-semibold">{title} ({tasks.length})</h2><div className="mt-3 space-y-4">{tasks.map((task) => <article key={task.id} className="card p-4"><h3 className="font-semibold"><Link className="font-medium hover:underline" href={`/empresas/${task.companyId}`}><span className={`badge badge-${(task.company.priority ?? 'C').toLowerCase()} mr-2 align-middle`}>{task.company.priority ?? 'C'}</span>{task.company.name}</Link></h3><p>{task.title}{task.dueAt && taskDate(task.dueAt)! > day && <span className="text-slate-500"> · para el {taskDate(task.dueAt)!.split('-').reverse().join('/')}</span>}</p>{task.script && <details className="mt-2"><summary>Guion y emails</summary><ScriptView content={task.script.content as Content}/></details>}{process.env.EMAIL_TRANSPORT === 'trygestion' && trygestionConfiguration().enabled && task.type === 'EMAIL' && task.script && (task.script.content as Content).emails?.filter(email => email.dia === task.cadenceStep?.dayOffset).map(email => <EmailApproval key={email.dia} taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email} firma={firma}/>)}<form action={recordTaskResult} className="mt-3 flex flex-wrap gap-2"><input type="hidden" name="taskId" value={task.id}/><fieldset className="w-full"><legend>Reunión: fecha y hora (zona del calendario)</legend><label>Fecha<input type="date" name="meetingDate"/></label><label>Hora<input type="time" name="meetingTime"/></label><label>Ubicación<input name="meetingLocation"/></label></fieldset>{results.map((result) => <button key={result} name="result" value={result}>{result}</button>)}</form></article>)}</div></section>;
-  return <main className="mx-auto max-w-4xl p-5"><h1 className="page-title">Mi día</h1><form className="my-4 flex items-end gap-2"><input className="mt-0 w-auto" name="fecha" type="date" defaultValue={day}/><button>Ver tareas</button></form>{searchParams.email && <p role="status">{searchParams.email === 'EMAIL_SENT' ? 'Email enviado.' : `Email no enviado: ${emailErrors[searchParams.email] ?? searchParams.email}`}</p>}{section('Hoy', today)}{section('Atrasadas', overdue)}{section('Próximos 7 días', upcoming)}{section('Por planificar', planning)}</main>;
+  const include = { company: { include: { contacts: true, opportunities: { include: { product: true } } } }, script: true, cadenceStep: true } as const;
+  const all = await prisma.task.findMany({ where: { status: 'PENDING', company: { acceptanceStatus: 'ACCEPTED' }, OR: [{ dueAt: { lte: limite } }, { dueAt: null }] }, include });
+  const products = [...new Set(all.flatMap(productLines))].sort((a, b) => a.localeCompare(b, 'es'));
+  if (filters.producto && !products.includes(filters.producto)) filters = { ...filters, producto: '' };
+  const requested = safeId.safeParse(searchParams.tarea);
+  const target = requested.success ? await prisma.task.findUnique({ where: { id: requested.data }, include }) : null;
+  const focused = target?.status === 'PENDING' && target.type === 'EMAIL' && target.company.acceptanceStatus === 'ACCEPTED' && target.script?.status === 'APPROVED' && taskEmail(target) && !await isSuppressed(prisma, target.companyId) ? target : null;
+  const filtered = filterTasks(all, filters, day);
+  const regular = filtered.filter(task => task.id !== focused?.id);
+  const today = regular.filter(task => taskDate(task.dueAt) === day);
+  const overdue = regular.filter(task => task.dueAt && taskDate(task.dueAt)! < day);
+  const upcoming = regular.filter(task => task.dueAt && taskDate(task.dueAt)! > day);
+  const planning = regular.filter(task => !task.dueAt);
+  const enabled = process.env.EMAIL_TRANSPORT === 'trygestion' && trygestionConfiguration().enabled;
+  const canEdit = Boolean(session?.user?.id) && session?.user?.role !== 'DIRECTOR';
+  const section = (title: string, tasks: typeof all) => <section aria-label={title} className="mb-8"><h2 className="text-lg font-semibold">{title} ({tasks.length})</h2><div className="mt-3 space-y-4">{tasks.map(task => {
+    const selected = task.id === focused?.id;
+    const email = taskEmail(task);
+    return <article id={`tarea-${task.id}`} key={task.id} className={`card scroll-mt-4 p-4 ${selected ? 'border-try-500 ring-2 ring-try-500' : ''}`}>
+      {selected && <p role="status" className="mb-2 font-semibold">Email preparado desde la ficha de {task.company.name}</p>}
+      <h3 className="font-semibold"><Link className="font-medium hover:underline" href={`/empresas/${task.companyId}`}><span className={`badge badge-${(task.company.priority ?? 'C').toLowerCase()} mr-2 align-middle`}>{task.company.priority ?? 'Sin prioridad'}</span>{task.company.name}</Link></h3>
+      <p>{task.title}{task.dueAt && taskDate(task.dueAt)! > day && <span className="text-slate-500"> · para el {taskDate(task.dueAt)!.split('-').reverse().join('/')}</span>}</p>
+      {task.script && <details className="mt-2"><summary>Guion y emails</summary><ScriptView content={task.script.content as Content}/></details>}
+      {canEdit && task.type === 'EMAIL' && task.script?.status === 'APPROVED' && email && (enabled || selected) && <EmailApproval taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email} firma={firma} open={selected} enabled={enabled}/>}
+      {canEdit && <form action={recordTaskResult} className="mt-3 flex flex-wrap gap-2"><input type="hidden" name="taskId" value={task.id}/><fieldset className="w-full"><legend>Reunión: fecha y hora (zona del calendario)</legend><label>Fecha<input type="date" name="meetingDate"/></label><label>Hora<input type="time" name="meetingTime"/></label><label>Ubicación<input name="meetingLocation"/></label></fieldset>{results.map(result => <SubmitButton key={result} name="result" value={result} pendingText="Guardando…">{result}</SubmitButton>)}</form>}
+    </article>;
+  })}</div></section>;
+  return <main className="mx-auto max-w-5xl p-3 [overflow-wrap:anywhere] sm:p-5"><h1 className="page-title">Mi día</h1>
+    <form method="get" className="card my-4 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label className="min-w-0">Fecha<input className="w-full min-w-0" name="fecha" type="date" defaultValue={day}/></label>
+      <label className="min-w-0">Buscar<input className="w-full min-w-0" name="buscar" defaultValue={filters.buscar} placeholder="Empresa, tarea, municipio o región"/></label>
+      <label>Tipo de tarea<select name="tipo" defaultValue={filters.tipo}><option value="">Todas</option>{Object.entries(taskTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <label>Prioridad de la empresa<select name="prioridad" defaultValue={filters.prioridad}><option value="">Todas</option>{['A', 'B', 'C'].map(p => <option key={p}>{p}</option>)}<option value="NONE">Sin prioridad</option></select></label>
+      <label>País<select name="pais" defaultValue={filters.pais}><option value="">Todos</option><option value="ES">España</option><option value="CO">Colombia</option></select></label>
+      <label>Línea de producto<select name="producto" defaultValue={filters.producto}><option value="">Todas</option>{products.map(p => <option key={p}>{p}</option>)}</select></label>
+      <label>Mostrar<select name="mostrar" defaultValue={filters.mostrar}><option value="">Todo</option><option value="overdue">Vencidas</option><option value="today">Hoy</option><option value="upcoming">Próximos 7 días</option><option value="undated">Sin fecha</option></select></label>
+      <label>Ordenar por<select name="orden" defaultValue={filters.orden}><option value="date">Fecha</option><option value="priority">Prioridad</option><option value="company">Empresa (A-Z)</option></select></label>
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-4"><SubmitButton pendingText="Filtrando…">Ver tareas</SubmitButton><Link className="btn-secondary" href={`/mi-dia?fecha=${day}`}>Quitar filtros</Link></div>
+    </form>
+    <p role="status" data-testid="task-count" className="mb-4">{filtered.length} de {all.length} tareas</p>
+    {typeof searchParams.email === 'string' && <p role="status">{searchParams.email === 'EMAIL_SENT' ? 'Email enviado.' : `Email no enviado: ${emailErrors[searchParams.email] ?? 'Revisa el envío e inténtalo de nuevo.'}`}</p>}
+    {searchParams.tarea && !focused && <p role="alert">La tarea solicitada no existe, ya está hecha o no está disponible para preparar un email.</p>}
+    {focused && <><TaskFocus taskId={focused.id}/>{section('Email preparado', [focused])}<p className="mb-4 text-sm text-slate-600">El email seleccionado se muestra arriba aunque no coincida con los filtros. El contador corresponde a las tareas filtradas.</p></>}
+    {!filtered.length && <p>No hay tareas que coincidan con los filtros para esta fecha.</p>}
+    {section('Hoy', today)}{section('Atrasadas', overdue)}{section('Próximos 7 días', upcoming)}{section('Por planificar', planning)}
+  </main>;
 }

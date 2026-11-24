@@ -288,6 +288,7 @@ model Task {
   title String
   scriptId String?
   status TaskStatus @default(PENDING)
+  scriptEmailIndex Int?
   dueAt DateTime?
   completedAt DateTime?
   result String?
