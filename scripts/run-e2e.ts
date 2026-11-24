@@ -41,6 +41,13 @@ async function main() {
     await db.$disconnect();
   }
   await execute(['scripts/run-typescript.cjs', 'prisma/seed-real.ts']);
+  // Las pruebas históricas operan como comercial; ahora Mi día respeta al propietario.
+  // Ajustamos exclusivamente sus fixtures en la base _e2e validada arriba.
+  const fixtures = new PrismaClient({ datasources: { db: { url: e2eDatabaseUrl } } });
+  try {
+    const sales = await fixtures.user.findUniqueOrThrow({ where: { email: 'comercial@try.company' } });
+    await fixtures.company.updateMany({ data: { ownerId: sales.id } });
+  } finally { await fixtures.$disconnect(); }
   console.log(`Base E2E preparada: ${name}.`);
   // Do not replace the parent process's DATABASE_URL: Playwright's safety guard
   // must compare E2E_DATABASE_URL against the original working configuration.

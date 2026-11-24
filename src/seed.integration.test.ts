@@ -264,10 +264,11 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     expect(await db.activity.count({ where: { taskId: task.id, result: 'Baja' } })).toBe(1);
   });
 
-  it('rechaza el doble clic y registra una sola Activity', async () => {
+  it('reutiliza el doble clic y registra una sola Activity', async () => {
     const { task } = await caspeTask();
     await completeTask(db, task.id, 'Contactado');
-    await expect(completeTask(db, task.id, 'Contactado')).rejects.toThrow('ya fue procesada');
+    expect((await completeTask(db, task.id, 'Contactado')).id).toBe(task.id);
+    expect(await db.activity.count({ where: { taskId: task.id } })).toBe(1);
     expect(await db.activity.count({ where: { taskId: task.id } })).toBe(1);
   });
 

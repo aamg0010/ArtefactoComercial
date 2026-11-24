@@ -12,6 +12,8 @@ import { CompanyContact } from './company-contact';
 import { SubmitButton } from '../../submit-button';
 import { prepareEmail } from './email-actions';
 import { isSuppressed } from '@/lib/suppression';
+import { loadGuide } from '@/lib/guia/service';
+import Link from 'next/link';
 
 const pendingFor: Record<string, { pendingText: string; notice?: string }> = {
   research: { pendingText: 'Investigando…', notice: 'Investigando la empresa (su web y fuentes públicas). Puede tardar unos minutos: no cierres ni recargues la página.' },
@@ -43,6 +45,8 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     contacts: true, sourceIdentities: true, evidence: { orderBy: { createdAt: 'desc' } }, researchReports: { orderBy: { version: 'desc' }, include: { score: true } }, scripts: { orderBy: { version: 'desc' } },
   } });
   if (!company) notFound();
+  const guide = session?.user?.id ? await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES' }, new Date(), undefined, company.id) : null;
+  const notices = guide?.groups.filter(g => ['overdue', 'next', 'stalled', 'closed', 'reminders'].includes(g.id)).flatMap(g => g.items) ?? [];
   const suppressed = await isSuppressed(prisma, company.id);
   const products = await prisma.product.findMany({ where: { active: true }, orderBy: { line: 'asc' } });
   const latest = company.researchReports.find(report => report.origin === 'AI');
@@ -51,6 +55,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><SubmitButton name="action" value={action} disabled={company.acceptanceStatus !== 'ACCEPTED'} {...pendingFor[action]}>{label}</SubmitButton></form>;
   return <main className="mx-auto max-w-5xl space-y-5 p-3 [overflow-wrap:anywhere] sm:p-5">
     <h1 className="page-title break-words">{company.name}</h1>
+    {notices.length > 0 && <section aria-label="Avisos de seguimiento" className="rounded-xl border border-amber-200 bg-amber-50 p-4"><h2 className="font-semibold">Guía del día</h2><ul>{notices.map(item => <li key={`${item.id}-${item.title}`}>{item.title} · {item.reason}</li>)}</ul><Link className="underline" href="/mi-dia">Gestionar en Mi día</Link></section>}
     <p>Revisión: {company.acceptanceStatus === 'PENDING' ? 'Pendiente de aceptar' : company.acceptanceStatus === 'DISCARDED' ? 'Descartada' : 'Lista para trabajar'}</p>
     {company.trygestionEmpresaId && <section aria-label="trygestión" className="card flex flex-wrap items-center justify-between gap-3 border-try-100 bg-try-50/60 py-4">
       <p className="font-display text-sm text-try-900"><span className="badge badge-b mr-2">En trygestión</span>Sincronizada con el Pipeline</p>
