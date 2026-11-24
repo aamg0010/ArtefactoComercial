@@ -19,6 +19,8 @@ export default async function IntegrationPage() {
     const tenant = typeof state.tenant === 'object' ? JSON.stringify(state.tenant) : state.tenant;
     status = `Activada · Tenant: ${tenant} · SMTP: ${state.smtp ? 'sí' : 'no'} · IA: ${state.ia ? 'sí' : 'no'} · Google Calendar: ${state.googleCalendar ? 'sí' : 'no'}`;
   } catch (error) { status = `Activada · Error de conexión: ${error instanceof TrygestionError ? error.code : 'CONFIGURATION_ERROR'}`; }
+  const replyCounts = await prisma.emailReply.groupBy({ by: ['status'], _count: true });
+  const replySync = await prisma.emailReplySync.findUnique({ where: { id: 'trygestion' } });
   const counts = await prisma.syncOutbox.groupBy({ by: ['status'], _count: true });
   const errors = await prisma.syncOutbox.findMany({ where: { status: { in: ['FAILED', 'PENDING'] }, lastError: { not: null } }, orderBy: { updatedAt: 'desc' }, take: 20 });
   const linked = await prisma.company.count({ where: { trygestionEmpresaId: { not: null } } });
@@ -28,6 +30,12 @@ export default async function IntegrationPage() {
     <p className="font-display text-sm text-slate-600">Empresas enlazadas con trygestión: <span className="font-semibold text-try-700">{linked}</span></p>
     <section aria-label="Cola de sincronización" className="card"><h2 className="font-display text-lg font-semibold">Cola de sincronización</h2>
       <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">{statusLabels.map(([value, label]) => <li key={value} className="rounded-xl border border-slate-200 bg-try-50/40 p-3 font-display"><span className="block text-xs uppercase tracking-wide text-slate-500">{label}</span><span data-status={value} className="text-2xl font-semibold text-try-800">{counts.find(row => row.status === value)?._count ?? 0}</span></li>)}</ul>
+    </section>
+    <section aria-label="Sincronización de respuestas" className="card p-4">
+      <h2>Respuestas recibidas</h2>
+      <p>Nuevas: {replyCounts.find(row => row.status === 'NEW')?._count ?? 0} · Gestionadas: {replyCounts.find(row => row.status === 'HANDLED')?._count ?? 0}</p>
+      <p>Cursor (UTC): {replySync?.cursor ?? 'Sin sincronizar'}</p>
+      {replySync?.lastError && <p role="alert">Error de respuestas: {replySync.lastError === 'REPLY_CURSOR_SATURATED' ? 'Hay 100 respuestas en el mismo segundo. Se conserva el cursor; trygestión necesita paginación adicional para continuar.' : replySync.lastError}</p>}
     </section>
     <div className="flex gap-4">
       <form action={processNow}><button disabled={!client?.enabled}>Procesar ahora</button></form>
