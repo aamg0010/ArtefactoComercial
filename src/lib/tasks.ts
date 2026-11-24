@@ -3,11 +3,24 @@ import { setCompanyCadenceStatus } from './cadence';
 import { isSuppressed } from './suppression';
 import { enqueue, enqueueCompany, enqueuePipeline } from './trygestion/outbox';
 import { normalizeDomain } from './normalization';
+import { safeId } from './mi-dia/script-email';
+import { companyInScope, taskInScope } from './guia/engine';
 
 export async function completeTask(prisma: PrismaClient, taskId: string, result: string, authorId?: string, meeting?: { date: string; time: string; location?: string }) {
+  safeId.parse(taskId);
+  if (!['Contactado', 'No contesta', 'Buzón', 'Interesado', 'Reunión agendada', 'No interesado', 'Baja'].includes(result)) throw new Error('Resultado inválido');
   return prisma.$transaction(async (tx) => {
-    const current = await tx.task.findUniqueOrThrow({ where: { id: taskId } }); if (current.status !== 'PENDING') throw new Error('La tarea ya fue procesada.');
+    const before = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
+    await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${before.companyId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${taskId} FOR UPDATE`;
+    const current = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
     const company = await tx.company.findUniqueOrThrow({ where: { id: current.companyId } });
+    if (authorId) {
+      const user = await tx.user.findUniqueOrThrow({ where: { id: safeId.parse(authorId) } });
+      const scope = { userId: user.id, role: user.role, team: user.role === 'ADMIN' };
+      if (user.role === 'DIRECTOR' || !companyInScope(company, scope) || !taskInScope(current, scope)) throw new Error('No autorizado');
+    }
+    if (current.status !== 'PENDING') return current;
     if (company.acceptanceStatus !== 'ACCEPTED') throw new Error('Empresa pendiente de aceptar o descartada.');
     const task = await tx.task.update({ where: { id: taskId }, data: { status: TaskStatus.COMPLETED, completedAt: new Date(), result }, include: { companyCadence: true, cadenceStep: true } });
     const activity = await tx.activity.create({ data: { companyId: task.companyId, taskId: task.id, authorId, type: task.type === 'CALL' ? 'CALL' : task.type === 'FOLLOW_UP' ? 'NOTE' : 'EMAIL', result } });
