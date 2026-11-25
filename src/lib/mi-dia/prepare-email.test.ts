@@ -61,6 +61,21 @@ describe.runIf(enabled)('preparación de emails en PostgreSQL aislado', () => {
     await expect(prepareScriptEmail(db, input, now)).rejects.toThrow('Aprueba el guion');
     expect(await db.task.count({ where: { companyId } })).toBe(0);
   });
+  it('no adelanta una roja sin confirmación y registra la excepción confirmada', async () => {
+    await db.activity.create({ data: { companyId, type: 'CALL', createdAt: new Date('2026-11-20T12:00:00Z') } });
+    const future = await db.task.create({ data: { companyId, scriptId, scriptEmailIndex: 1, type: 'EMAIL', title: 'Seguimiento previsto', dueAt: new Date('2026-12-01') } });
+    await expect(prepareScriptEmail(db, input, now)).rejects.toThrow('Sí, quiero contactarla igualmente');
+    expect((await db.task.findUniqueOrThrow({ where: { id: future.id } })).dueAt).toEqual(new Date('2026-12-01'));
+    expect(await db.auditLog.count({ where: { entityId: companyId, action: 'CONTACT_WAIT_OVERRIDE' } })).toBe(0);
+    await prepareScriptEmail(db, { ...input, contactConfirmed: true }, now);
+    expect((await db.task.findUniqueOrThrow({ where: { id: future.id } })).dueAt).toEqual(new Date('2026-11-24'));
+    expect(await db.auditLog.findFirst({ where: { entityId: companyId, action: 'CONTACT_WAIT_OVERRIDE' } })).toMatchObject({ userId, metadata: { action: 'PREPARE_EMAIL', lastContact: '2026-11-20', nextContact: '2026-12-01' } });
+  });
+  it.each(['LOST', 'WON'])('no prepara una gris %s aunque se confirme', async pipelineStage => {
+    await db.company.update({ where: { id: companyId }, data: { pipelineStage } });
+    await expect(prepareScriptEmail(db, { ...input, contactConfirmed: true }, now)).rejects.toThrow();
+    expect(await db.task.count({ where: { companyId } })).toBe(0);
+  });
   it.each(['PENDING', 'DISCARDED'] as const)('rechaza empresa %s', async acceptanceStatus => {
     await db.company.update({ where: { id: companyId }, data: { acceptanceStatus } });
     await expect(prepareScriptEmail(db, input, now)).rejects.toThrow('Acepta la empresa');

@@ -1,3 +1,5 @@
+import { loadContactStatuses } from '@/lib/contact-status-service';
+import { ContactBadge, ContactWarning } from '@/app/contact-status';
 import { ReplyCards } from '../../pipeline/reply-cards';
 import { trygestionEmpresaUrl, trygestionPipelineUrl } from '@/lib/trygestion/links';
 import { prisma } from '@/lib/prisma';
@@ -26,6 +28,8 @@ export const dynamic = 'force-dynamic';
 const factorLabels: Record<string, string> = { sector: 'Encaje de sector', size: 'Tamaño', intent: 'Intención', contact: 'Accesibilidad del contacto', proximity: 'Proximidad geográfica', crossSell: 'Venta cruzada' };
 const fieldLabels: Record<string, string> = { name: 'Nombre', city: 'Municipio', website: 'Web', phone: 'Teléfono corporativo', email: 'Email corporativo' };
 const errorMessages: Record<string, string> = {
+  CONTACT_CONFIRMATION_REQUIRED: 'Esta empresa está contactada y en espera. Revisa las fechas y marca «Sí, quiero contactarla igualmente» para continuar.',
+  CONTACT_BLOCKED: 'Esta empresa está marcada como No contactar o Cliente. No se puede contactar.',
   'email-no-preparado': 'No se pudo preparar el email. Comprueba que la empresa esté aceptada, sin baja y el guion aprobado.',
   'contacto-duplicado': 'Ese contacto ya existe en esta empresa (mismo nombre, email o teléfono). No se ha creado otra vez.',
   'contacto-invalido': 'Revisa el contacto: el nombre es obligatorio y, si pones email, tiene que ser válido.',
@@ -45,6 +49,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     contacts: true, sourceIdentities: true, evidence: { orderBy: { createdAt: 'desc' } }, researchReports: { orderBy: { version: 'desc' }, include: { score: true } }, scripts: { orderBy: { version: 'desc' } },
   } });
   if (!company) notFound();
+  const contact = (await loadContactStatuses(prisma, [company.id])).get(company.id)!;
   const guide = session?.user?.id ? await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES', team: true }, new Date(), undefined, company.id) : null;
   const notices = guide?.groups.filter(g => ['overdue', 'next', 'stalled', 'closed', 'reminders'].includes(g.id)).flatMap(g => g.items) ?? [];
   const suppressed = await isSuppressed(prisma, company.id);
@@ -55,6 +60,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><SubmitButton name="action" value={action} disabled={company.acceptanceStatus !== 'ACCEPTED'} {...pendingFor[action]}>{label}</SubmitButton></form>;
   return <main className="mx-auto max-w-5xl space-y-5 p-3 [overflow-wrap:anywhere] sm:p-5">
     <h1 className="page-title break-words">{company.name}</h1>
+    <section aria-label="Estado de contacto" className="card p-4"><ContactBadge status={contact} detail/></section>
     {notices.length > 0 && <section aria-label="Avisos de seguimiento" className="rounded-xl border border-amber-200 bg-amber-50 p-4"><h2 className="font-semibold">Guía del día</h2><ul>{notices.map(item => <li key={`${item.id}-${item.title}`}>{item.title} · {item.reason}</li>)}</ul><Link className="underline" href="/mi-dia">Gestionar en Mi día</Link></section>}
     <p>Revisión: {company.acceptanceStatus === 'PENDING' ? 'Pendiente de aceptar' : company.acceptanceStatus === 'DISCARDED' ? 'Descartada' : 'Lista para trabajar'}</p>
     {company.trygestionEmpresaId && <section aria-label="trygestión" className="card flex flex-wrap items-center justify-between gap-3 border-try-100 bg-try-50/60 py-4">
@@ -100,11 +106,11 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
       <h2 className="text-lg font-semibold">Guiones</h2>
       {company.acceptanceStatus === 'ACCEPTED' && research.success && !company.scripts.some(script => script.status === 'APPROVED') && <form action={companyAction}>
         <input type="hidden" name="companyId" value={company.id}/><label>Línea de producto principal<select name="product" defaultValue={research.data.recommendations[0].line}>{products.map(product => <option key={product.id} value={product.line}>{product.line}</option>)}</select></label>
-        <SubmitButton name="action" value="generate" {...pendingFor.generate}>Generar guion</SubmitButton>
+        <ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} name="action" value="generate" {...pendingFor.generate}>Generar guion</SubmitButton>
       </form>}
       {company.scripts.map(script => <article className="mt-4 border-t pt-3" key={script.id}>
         <h3 className="font-semibold">Guion versión {script.version} · {script.author} · {script.status === 'BORRADOR' ? 'BORRADOR' : 'Aprobado'}</h3>
-        <ScriptView content={script.content as GeneratedScript} emailAction={index => suppressed ? <p>La empresa ha solicitado la baja y no puede recibir emails.</p> : script.status === 'BORRADOR' ? <p>Aprueba el guion para poder enviar sus emails</p> : company.acceptanceStatus !== 'ACCEPTED' ? <p>Acepta la empresa para poder enviar sus emails.</p> : canEdit ? <form action={prepareEmail} className="mt-2"><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><input type="hidden" name="emailIndex" value={index}/><SubmitButton className="btn-secondary" pendingText="Preparando…">Enviar desde Mi día</SubmitButton></form> : null}/>
+        <ScriptView content={script.content as GeneratedScript} emailAction={index => suppressed ? <p>La empresa ha solicitado la baja y no puede recibir emails.</p> : script.status === 'BORRADOR' ? <p>Aprueba el guion para poder enviar sus emails</p> : company.acceptanceStatus !== 'ACCEPTED' ? <p>Acepta la empresa para poder enviar sus emails.</p> : canEdit ? <form action={prepareEmail} className="mt-2"><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><input type="hidden" name="emailIndex" value={index}/><ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} className="btn-secondary" pendingText="Preparando…">Enviar desde Mi día</SubmitButton></form> : null}/>
         {script.status === 'BORRADOR' && script.version === company.scripts[0].version && <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><SubmitButton name="action" value="approve" {...pendingFor.approve}>Aprobar guion</SubmitButton></form>}
       </article>)}
     </section>

@@ -1,3 +1,6 @@
+import { z } from 'zod';
+import { loadContactStatuses } from '@/lib/contact-status-service';
+import { ContactBadge } from '@/app/contact-status';
 import Link from 'next/link';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -11,6 +14,7 @@ import { SubmitButton } from '../submit-button';
 import { ConsejosPerfil, ResumenEjecucion } from './ayuda';
 
 export const dynamic = 'force-dynamic';
+const matchSchema = z.array(z.object({ companyId: z.string().max(191).regex(/^[\w-]+$/).optional(), outcome: z.string().optional() }).passthrough());
 const placeholders: Record<string, string> = {
   provinces: 'Teruel',
   comarcas: 'Bajo Aragón (opcional, solo clasifica)',
@@ -18,7 +22,7 @@ const placeholders: Record<string, string> = {
   keywords: 'bodega; almazara; cárnica',
   cnaeCodes: '1102; 1043',
 };
-export default async function Prospecting({ searchParams }: { searchParams: { error?: string; done?: string; ejecucion?: string } }) {
+export default async function Prospecting({ searchParams }: { searchParams: { error?: string; done?: string; ejecucion?: string; contactadas?: string } }) {
   const session = await auth(); const manage = Boolean(session?.user?.id) && session?.user?.role !== 'DIRECTOR';
   const profiles = await prisma.searchProfile.findMany({ orderBy: { createdAt: 'asc' } });
   const google = googlePlacesConfigured(); const mockOk = simulationAllowed(); const einforma = Boolean(einformaCredentials());
@@ -36,6 +40,13 @@ export default async function Prospecting({ searchParams }: { searchParams: { er
     prisma.company.count({ where: { ...detection, acceptanceStatus: 'PENDING' } }),
   ]);
   const companies = [...ready, ...pending];
+  const duplicateIds = [...new Set(runs.filter(run => run.startedAt >= start && run.startedAt < end).flatMap(run => {
+    const matches = matchSchema.safeParse(run.matches);
+    return matches.success ? matches.data.filter(m => m.outcome === 'DUPLICATE' && m.companyId).map(m => m.companyId!) : [];
+  }))];
+  const existingMatches = duplicateIds.length ? await prisma.company.findMany({ where: { id: { in: duplicateIds } } }) : [];
+  const statuses = await loadContactStatuses(prisma, [...companies.map(c => c.id), ...duplicateIds]);
+  const hidden = ready.filter(c => ['red', 'gray'].includes(statuses.get(c.id)!.color)).length;
   const editor = (profile?: SearchProfile) => <form action={prospectingAction} className="grid gap-3 md:grid-cols-2">
     <input type="hidden" name="profileId" value={profile?.id ?? ''}/>
     <label>Nombre del perfil<input name="name" required defaultValue={profile?.name}/></label>
@@ -66,10 +77,14 @@ export default async function Prospecting({ searchParams }: { searchParams: { er
       {manage && <details><summary>Editar perfil</summary>{editor(profile)}</details>}
     </article>)}</section>
     <section aria-label="Detectadas hoy" className="card p-4"><h2 className="text-lg font-semibold">Detectadas hoy ({readyCount + pendingCount}) · {day}</h2>
+      {existingMatches.length > 0 && <section aria-label="Coincidencias con empresas existentes"><h3 className="font-semibold">Ya estaban en la base ({existingMatches.length})</h3><ul>{existingMatches.map(company => <li key={company.id}><Link className="underline" href={`/empresas/${company.id}`}>{company.name}</Link><ContactBadge status={statuses.get(company.id)!}/></li>)}</ul></section>}
       {(['ACCEPTED', 'PENDING'] as const).map(status => {
-        const rows = companies.filter(company => company.acceptanceStatus === status); const label = status === 'ACCEPTED' ? 'Listas para trabajar' : 'Pendientes de aceptar';
+        const rows = companies.filter(company => company.acceptanceStatus === status && (status !== 'ACCEPTED' || searchParams.contactadas === '1' || !['red', 'gray'].includes(statuses.get(company.id)!.color))); const label = status === 'ACCEPTED' ? 'Listas para trabajar' : 'Pendientes de aceptar';
         const count = status === 'ACCEPTED' ? readyCount : pendingCount;
-        return <section key={status} aria-label={label}><h3 className="font-semibold">{label} ({count})</h3>{count > rows.length && <p>Se muestran las 200 más recientes de este grupo.</p>}<ul>{rows.map(company => <li key={company.id}><Link className="font-medium hover:underline" prefetch={false} href={`/empresas/${company.id}`}>{company.name}</Link> · {company.city ?? 'Ubicación por verificar'} · {company.source} · {company.researchQueuedAt ? 'Investigación en cola' : status === 'PENDING' ? 'Revisión humana requerida' : 'Sin investigación pendiente'} {company.sourceIdentities.filter(source => source.attribution).map(source => <a key={source.id} className="ml-2 font-medium hover:underline" href="https://www.openstreetmap.org/copyright">{source.attribution}</a>)}</li>)}</ul></section>;
+        return <section key={status} aria-label={label}><h3 className="font-semibold">{label} ({rows.length})</h3>
+          {status === 'ACCEPTED' && hidden > 0 && <Link className="my-2 block underline" href={searchParams.contactadas === '1' ? '/rastreo' : '/rastreo?contactadas=1'}>{searchParams.contactadas === '1' ? 'Ocultar las contactadas' : `Ver también las contactadas (${hidden})`}</Link>}
+          {count > (status === 'ACCEPTED' ? ready.length : pending.length) && <p>Se muestran las 200 más recientes de este grupo antes de filtrar por contacto.</p>}
+          <ul>{rows.map(company => <li className="my-2" key={company.id}><Link className="font-medium hover:underline" prefetch={false} href={`/empresas/${company.id}`}>{company.name}</Link><ContactBadge status={statuses.get(company.id)!}/> · {company.city ?? 'Ubicación por verificar'} · {company.source} · {company.researchQueuedAt ? 'Investigación en cola' : status === 'PENDING' ? 'Revisión humana requerida' : 'Sin investigación pendiente'} {company.sourceIdentities.filter(source => source.attribution).map(source => <a key={source.id} className="ml-2 font-medium hover:underline" href="https://www.openstreetmap.org/copyright">{source.attribution}</a>)}</li>)}</ul></section>;
       })}
     </section>
     <section aria-label="Historial de ejecuciones" className="overflow-x-auto card p-4"><h2 className="text-lg font-semibold">Historial de ejecuciones</h2>

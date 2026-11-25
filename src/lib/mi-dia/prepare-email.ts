@@ -1,3 +1,4 @@
+import { enforceContactBarrier } from '../contact-status-service';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { madridDate, taskDate } from '../dates';
@@ -5,7 +6,7 @@ import { isSuppressed } from '../suppression';
 import { safeId, scriptEmails } from './script-email';
 
 export const prepareEmailInput = z.object({
-  companyId: safeId, scriptId: safeId, userId: safeId,
+  contactConfirmed: z.boolean().default(false), companyId: safeId, scriptId: safeId, userId: safeId,
   emailIndex: z.union([z.number(), z.string().regex(/^\d+$/).transform(Number)]).pipe(z.number().int().min(0).max(1000)),
 });
 
@@ -21,6 +22,7 @@ export async function prepareScriptEmail(db: PrismaClient, raw: unknown, now = n
     if (script.status !== 'APPROVED') throw new Error('Aprueba el guion para poder enviar sus emails');
     if (script.company.acceptanceStatus !== 'ACCEPTED') throw new Error('Acepta la empresa antes de preparar emails');
     if (await isSuppressed(tx, input.companyId)) throw new Error('La empresa ha solicitado la baja y no puede recibir emails');
+    await enforceContactBarrier(tx, input.companyId, input.contactConfirmed, input.userId, 'PREPARE_EMAIL', now);
     const email = scriptEmails.parse(script.content).emails[input.emailIndex];
     if (!email) throw new Error('Email del guion no encontrado');
     const existing = await tx.task.findFirst({ where: {
