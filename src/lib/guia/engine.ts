@@ -27,8 +27,8 @@ export const daysBetween = (a: string, b: string) => Math.floor((Date.parse(`${b
  * (en producción las empresas de la carga inicial pertenecen al administrador del seed, pero sus tareas son de cada comercial).
  */
 export const companyInScope = (company: { ownerId: string | null; tasks?: { assigneeId: string | null }[] }, scope: Scope) =>
-  Boolean(scope.team && scope.role === 'ADMIN') || !company.ownerId || company.ownerId === scope.userId || Boolean(company.tasks?.some(task => task.assigneeId === scope.userId));
-export const taskInScope = (task: { assigneeId: string | null }, scope: Scope) => Boolean(scope.team && scope.role === 'ADMIN') || !task.assigneeId || task.assigneeId === scope.userId;
+  Boolean(scope.team) || !company.ownerId || company.ownerId === scope.userId || Boolean(company.tasks?.some(task => task.assigneeId === scope.userId));
+export const taskInScope = (task: { assigneeId: string | null }, scope: Scope) => Boolean(scope.team) || !task.assigneeId || task.assigneeId === scope.userId;
 export function closedCycle(company: GuideCompany, cadenceId: string) {
   const cadence = company.cadences.find(c => c.id === cadenceId);
   if (!cadence || cadence.status === 'PAUSED' || company.acceptanceStatus !== 'ACCEPTED' || company.suppressions.length || ['WON', 'LOST'].includes(company.pipelineStage)) return null;

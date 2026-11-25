@@ -83,7 +83,7 @@ describe.runIf(enabled)('guía: acciones transaccionales en PostgreSQL de prueba
     await Promise.all([completeTask(prisma, task.id, 'No contesta', userId), completeTask(prisma, task.id, 'No contesta', userId)]);
     expect(await prisma.activity.count({ where: { taskId: task.id } })).toBe(1);
   });
-  it('rechaza director, usuario inexistente, propietario ajeno y asignación ajena', async () => {
+  it('rechaza director y usuario inexistente; el comercial puede actuar sobre empresas y tareas de otros', async () => {
     const next = { action: 'next', userId, companyId, type: 'CALL', date: '2026-11-25' };
     await prisma.user.update({ where: { id: userId }, data: { role: 'DIRECTOR' } });
     await expect(mutateGuide(prisma, next, now)).rejects.toThrow('No autorizado');
@@ -92,11 +92,12 @@ describe.runIf(enabled)('guía: acciones transaccionales en PostgreSQL de prueba
     await expect(completeTask(prisma, task.id, 'No contesta', userId)).rejects.toThrow('No autorizado');
     await prisma.user.update({ where: { id: userId }, data: { role: 'SALES' } });
     const other = await prisma.user.findFirstOrThrow({ where: { id: { not: userId } } });
+    // Todos los usuarios (CEO o comercial) ven y usan todo: empresa de otro propietario y tarea asignada a otro.
     await prisma.company.update({ where: { id: companyId }, data: { ownerId: other.id } });
-    await expect(mutateGuide(prisma, next, now)).rejects.toThrow('No autorizado');
+    await expect(mutateGuide(prisma, next, now)).resolves.toBeTruthy();
     await prisma.company.update({ where: { id: companyId }, data: { ownerId: null } });
     await prisma.task.update({ where: { id: task.id }, data: { assigneeId: other.id } });
-    await expect(mutateGuide(prisma, { action: 'postpone', taskId: task.id, userId, days: 1, expectedDay: null }, now)).rejects.toThrow('No autorizado');
+    await expect(mutateGuide(prisma, { action: 'postpone', taskId: task.id, userId, days: 1, expectedDay: null }, now)).resolves.toBeTruthy();
     await prisma.user.update({ where: { id: userId }, data: { role: 'ADMIN' } });
     await expect(mutateGuide(prisma, next, now)).resolves.toBeTruthy();
   });

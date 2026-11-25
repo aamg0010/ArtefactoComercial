@@ -35,7 +35,7 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
   let filters = filtersSchema.parse(searchParams);
   const session = await auth();
   if (!session?.user?.id) redirect('/login');
-  const scope = { userId: session.user.id, role: session.user.role ?? 'SALES', team: session.user.role === 'ADMIN' && searchParams.equipo === '1' };
+  const scope = { userId: session.user.id, role: session.user.role ?? 'SALES', team: searchParams.equipo !== '0' };
   const guide = await loadGuide(prisma, scope, new Date(), day);
   const me = session?.user?.id ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, signatureName: true, signatureTitle: true } }) : null;
   const firma = { nombre: me?.signatureName ?? me?.name ?? '', cargo: me?.signatureTitle ?? '' };
@@ -68,11 +68,11 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
     </article>;
   })}</div></section>;
   return <main className="mx-auto max-w-5xl p-3 [overflow-wrap:anywhere] sm:p-5"><h1 className="page-title">Mi día</h1>
-    {session.user.role === 'ADMIN' && <form method="get" className="my-3 flex flex-wrap items-end gap-2"><input type="hidden" name="fecha" value={day}/><label>Alcance<select name="equipo" defaultValue={scope.team ? '1' : '0'}><option value="0">Mis empresas y sin propietario</option><option value="1">Todo el equipo</option></select></label><SubmitButton pendingText="Cargando…">Ver guía</SubmitButton></form>}
+    {<form method="get" className="my-3 flex flex-wrap items-end gap-2"><input type="hidden" name="fecha" value={day}/><label>Alcance<select name="equipo" defaultValue={scope.team ? '1' : '0'}><option value="1">Todo el equipo</option><option value="0">Solo lo mío (mis empresas y tareas)</option></select></label><SubmitButton pendingText="Cargando…">Ver guía</SubmitButton></form>}
     <DayGuide guide={guide} canEdit={canEdit}/>
     {guide.groups[0].count > 0 && <p className="my-3"><Link className="underline" href="/pipeline">Ver en el Pipeline</Link></p>}
     <form method="get" className="card my-4 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-      {scope.team && <input type="hidden" name="equipo" value="1"/>}
+      {!scope.team && <input type="hidden" name="equipo" value="0"/>}
       <label className="min-w-0">Fecha<input className="w-full min-w-0" name="fecha" type="date" defaultValue={day}/></label>
       <label className="min-w-0">Buscar<input className="w-full min-w-0" name="buscar" defaultValue={filters.buscar} placeholder="Empresa, tarea, municipio o región"/></label>
       <label>Tipo de tarea<select name="tipo" defaultValue={filters.tipo}><option value="">Todas</option>{Object.entries(taskTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -81,7 +81,7 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
       <label>Línea de producto<select name="producto" defaultValue={filters.producto}><option value="">Todas</option>{products.map(p => <option key={p}>{p}</option>)}</select></label>
       <label>Mostrar<select name="mostrar" defaultValue={filters.mostrar}><option value="">Todo</option><option value="overdue">Vencidas</option><option value="today">Hoy</option><option value="upcoming">Próximos 7 días</option><option value="undated">Sin fecha</option></select></label>
       <label>Ordenar por<select name="orden" defaultValue={filters.orden}><option value="date">Fecha</option><option value="priority">Prioridad</option><option value="company">Empresa (A-Z)</option></select></label>
-      <div className="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-4"><SubmitButton pendingText="Filtrando…">Ver tareas</SubmitButton><Link className="btn-secondary" href={`/mi-dia?fecha=${day}${scope.team ? '&equipo=1' : ''}`}>Quitar filtros</Link></div>
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-4"><SubmitButton pendingText="Filtrando…">Ver tareas</SubmitButton><Link className="btn-secondary" href={`/mi-dia?fecha=${day}${scope.team ? '' : '&equipo=0'}`}>Quitar filtros</Link></div>
     </form>
     <p role="status" data-testid="task-count" className="mb-4">{filtered.length} de {all.length} tareas</p>
     {typeof searchParams.email === 'string' && <p role="status">{searchParams.email === 'EMAIL_SENT' ? 'Email enviado.' : `Email no enviado: ${emailErrors[searchParams.email] ?? 'Revisa el envío e inténtalo de nuevo.'}`}</p>}

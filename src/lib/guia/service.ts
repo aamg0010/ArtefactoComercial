@@ -8,7 +8,7 @@ export const guideInclude = {
 } satisfies Prisma.CompanyInclude;
 export async function loadGuide(db: PrismaClient, scope: Scope, now = new Date(), day?: string, companyId?: string) {
   const companies = await db.company.findMany({ where: { ...(companyId ? { id: companyId } : {}),
-    ...(!(scope.team && scope.role === 'ADMIN') ? { OR: [{ ownerId: scope.userId }, { ownerId: null }, { tasks: { some: { assigneeId: scope.userId } } }] } : {}),
+    ...(!scope.team ? { OR: [{ ownerId: scope.userId }, { ownerId: null }, { tasks: { some: { assigneeId: scope.userId } } }] } : {}),
   }, include: guideInclude });
   const orphans = companyId ? [] : await db.emailReply.findMany({ where: { companyId: null, status: 'NEW', receivedAt: { lte: now } }, select: { id: true, subject: true } });
   return buildGuide(companies, scope, now, day, orphans);

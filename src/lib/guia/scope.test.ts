@@ -9,7 +9,8 @@ it('una empresa de otro propietario es mía si tengo tareas asignadas en ella', 
   expect(companyInScope({ ownerId: 'admin-seed' }, me)).toBe(false);
   expect(companyInScope({ ownerId: null }, me)).toBe(true);
   expect(companyInScope({ ownerId: 'admin-seed' }, { ...me, team: true })).toBe(true);
-  expect(companyInScope({ ownerId: 'admin-seed' }, { userId: 'yo', role: 'SALES', team: true })).toBe(false);
+  // Todos los usuarios (CEO o comercial) pueden ver todo el equipo.
+  expect(companyInScope({ ownerId: 'admin-seed' }, { userId: 'yo', role: 'SALES', team: true })).toBe(true);
   expect(taskInScope({ assigneeId: 'otro' }, me)).toBe(false);
   expect(taskInScope({ assigneeId: null }, me)).toBe(true);
 });

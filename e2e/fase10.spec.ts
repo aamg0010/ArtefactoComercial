@@ -72,27 +72,27 @@ test('Guía del día: vencidas, Día 6, siguiente paso y pausa 90 días actualiz
   }
 });
 
-test('ADMIN puede seleccionar todo el equipo y la insignia sigue el alcance', async ({ page }) => {
+test('cualquier usuario (también el comercial) ve todo el equipo por defecto y puede quedarse con lo suyo', async ({ page }) => {
   const db = new PrismaClient({ datasources: { db: { url: e2eDatabaseUrl } } });
   const id = 'fase10-admin-company';
   try {
-    const sales = await db.user.findUniqueOrThrow({ where: { email: 'comercial@try.company' } });
-    await db.company.create({ data: { id, name: '[SIMULADA] Fase10 de otro comercial', normalizedName: id, fictional: true, country: 'ES', ownerId: sales.id, pipelineStage: 'CONTACTING' } });
+    const admin = await db.user.findUniqueOrThrow({ where: { email: 'admin@try.company' } });
+    await db.company.create({ data: { id, name: '[SIMULADA] Fase10 de otro comercial', normalizedName: id, fictional: true, country: 'ES', ownerId: admin.id, pipelineStage: 'CONTACTING' } });
     await page.route(/https?:\/\/([^/]+\.)?(trygestion\.com|trycompany\.es)(\/|$)/, route => route.abort());
     await page.goto('/login');
-    await page.getByLabel('Email', { exact: true }).fill('admin@try.company');
-    await page.getByLabel('Contraseña', { exact: true }).fill(e2eEnvironment.SEED_ADMIN_PASSWORD);
+    await page.getByLabel('Email', { exact: true }).fill('comercial@try.company');
+    await page.getByLabel('Contraseña', { exact: true }).fill(e2eEnvironment.SEED_SALES_PASSWORD);
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();
     await expect(page).toHaveURL('http://localhost:3100/');
     await page.goto('/mi-dia');
     const guide = page.getByRole('region', { name: 'Guía del día', exact: true });
-    await expect(guide).not.toContainText('[SIMULADA] Fase10 de otro comercial');
-    const personal = Number(await page.getByTestId('guide-badge').innerText());
-    await page.getByRole('combobox', { name: 'Alcance', exact: true }).selectOption('1');
-    await page.getByRole('button', { name: 'Ver guía', exact: true }).click();
     await expect(guide).toContainText('[SIMULADA] Fase10 de otro comercial');
-    await expect.poll(async () => Number(await page.getByTestId('guide-badge').innerText())).toBeGreaterThan(personal);
+    const team = Number(await page.getByTestId('guide-badge').innerText());
     const counts = await Promise.all(['replies', 'overdue', 'next', 'closed', 'reminders'].map(key => page.getByTestId(`guide-count-${key}`).innerText()));
-    expect(Number(await page.getByTestId('guide-badge').innerText())).toBe(counts.reduce((n, text) => n + Number(text.split(': ').at(-1)), 0));
+    expect(team).toBe(counts.reduce((n, text) => n + Number(text.split(': ').at(-1)), 0));
+    await page.getByRole('combobox', { name: 'Alcance', exact: true }).selectOption('0');
+    await page.getByRole('button', { name: 'Ver guía', exact: true }).click();
+    await expect(guide).not.toContainText('[SIMULADA] Fase10 de otro comercial');
+    await expect.poll(async () => Number(await page.getByTestId('guide-badge').innerText())).toBeLessThan(team);
   } finally { await db.company.deleteMany({ where: { id } }); await db.$disconnect(); }
 });
