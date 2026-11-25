@@ -286,6 +286,21 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     expect(await db.syncOutbox.findFirst({ where: { entityId: local.id } })).toMatchObject({ status: 'SKIPPED' });
   });
 
+  it('enviar una roja exige confirmación también en servidor y audita la excepción', async () => {
+    const local = await company({ email: 'info@espera.test' });
+    const script = await db.script.create({ data: { companyId: local.id, author: 'test', content: {}, status: 'APPROVED' } });
+    const task = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Seguimiento futuro', scriptId: script.id, dueAt: new Date(Date.now() + 7 * 86400000) } });
+    await db.activity.create({ data: { companyId: local.id, type: 'CALL' } });
+    const input = { taskId: task.id, userId, approved: true, to: 'info@espera.test', subject: 'Hola', body: 'Texto' };
+    await expect(sendTaskEmail(db, input, { env, client: client() })).rejects.toThrow('Sí, quiero contactarla igualmente');
+    expect(mock.state.emails).toHaveLength(0);
+    expect(await db.emailDispatch.count({ where: { companyId: local.id } })).toBe(0);
+    expect(await db.auditLog.count({ where: { entityId: local.id, action: 'CONTACT_WAIT_OVERRIDE' } })).toBe(0);
+    expect(await sendTaskEmail(db, { ...input, contactConfirmed: true }, { env, client: client() })).toMatchObject({ sent: true });
+    expect(mock.state.emails).toHaveLength(1);
+    expect(await db.auditLog.findFirst({ where: { entityId: local.id, action: 'CONTACT_WAIT_OVERRIDE' } })).toMatchObject({ userId, metadata: { action: 'SEND_EMAIL' } });
+  });
+
   it('si la empresa no tiene email, el destinatario aprobado se guarda como su email corporativo', async () => {
     const local = await company({});
     const script = await db.script.create({ data: { companyId: local.id, author: 'test', content: {}, status: 'APPROVED' } });

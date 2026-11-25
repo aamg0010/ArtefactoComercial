@@ -5,11 +5,15 @@ import { normalizedBusinessName, normalizedPhone } from './prospecting/deduplica
 export async function isSuppressed(prisma: PrismaClient | Prisma.TransactionClient, companyId: string) {
   const company = await prisma.company.findUnique({ where: { id: companyId }, include: { contacts: true } });
   if (!company) return true;
+  return matchesSuppression(company, await prisma.suppressionList.findMany());
+}
+
+export function matchesSuppression(company: import('@prisma/client').Company & { contacts: import('@prisma/client').Contact[] }, exclusions: import('@prisma/client').SuppressionList[]) {
+  const companyId = company.id;
   const identifiers = [company, ...company.contacts];
   const emails = identifiers.map(item => item.email?.toLowerCase()).filter(Boolean);
   const phones = identifiers.map(item => normalizedPhone(item.phone, company.country)).filter(Boolean);
   const domain = company.normalizedDomain || normalizeDomain(company.website);
-  const exclusions = await prisma.suppressionList.findMany();
   return exclusions.some(row => row.companyId === companyId ||
     Boolean(row.email && emails.includes(row.email.toLowerCase())) ||
     Boolean(row.phone && phones.includes(normalizedPhone(row.phone, row.country ?? company.country))) ||

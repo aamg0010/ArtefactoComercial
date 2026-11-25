@@ -1,3 +1,4 @@
+import { loadContactStatuses } from '@/lib/contact-status-service';
 import { prisma } from '@/lib/prisma';
 import { recordTaskResult } from './actions';
 import { taskDate } from '@/lib/dates';
@@ -9,7 +10,6 @@ import { auth } from '@/auth';
 import { SubmitButton } from '../submit-button';
 import { filtersSchema, filterTasks, productLines, taskTypeLabels, validDay } from '@/lib/mi-dia/filters';
 import { safeId, taskEmail } from '@/lib/mi-dia/script-email';
-import { isSuppressed } from '@/lib/suppression';
 import { TaskFocus } from './task-focus';
 import { loadGuide } from '@/lib/guia/service';
 import { DayGuide } from './day-guide';
@@ -17,6 +17,8 @@ import { companyInScope, taskInScope } from '@/lib/guia/engine';
 import { redirect } from 'next/navigation';
 
 const emailErrors: Record<string, string> = {
+  CONTACT_CONFIRMATION_REQUIRED: 'empresa contactada en espera. Revisa las fechas y confirma expresamente si quieres adelantar el contacto.',
+  CONTACT_BLOCKED: 'esta empresa está marcada como No contactar o Cliente.',
   EMAIL_RECIPIENT_NOT_COMPANY_CONTACT: 'el destinatario no es el email de la empresa ni de uno de sus contactos.',
   EMAIL_RESOLVE_VARIABLES: 'sustituye [TELÉFONO] y [WEB] en el texto.',
   COMPANY_SUPPRESSED: 'la empresa pidió la baja.',
@@ -41,12 +43,14 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
   const firma = { nombre: me?.signatureName ?? me?.name ?? '', cargo: me?.signatureTitle ?? '' };
   const limite = new Date(`${day}T23:59:59.999Z`); limite.setUTCDate(limite.getUTCDate() + 7);
   const include = { company: { include: { contacts: true, opportunities: { include: { product: true } } } }, script: true, cadenceStep: true } as const;
-  const all = (await prisma.task.findMany({ where: { status: 'PENDING', company: { acceptanceStatus: 'ACCEPTED' }, OR: [{ dueAt: { lte: limite } }, { dueAt: null }] }, include })).filter(task => (companyInScope(task.company, scope) || task.assigneeId === scope.userId) && taskInScope(task, scope));
-  const products = [...new Set(all.flatMap(productLines))].sort((a, b) => a.localeCompare(b, 'es'));
-  if (filters.producto && !products.includes(filters.producto)) filters = { ...filters, producto: '' };
+  const candidates = (await prisma.task.findMany({ where: { status: 'PENDING', company: { acceptanceStatus: 'ACCEPTED' }, OR: [{ dueAt: { lte: limite } }, { dueAt: null }] }, include })).filter(task => (companyInScope(task.company, scope) || task.assigneeId === scope.userId) && taskInScope(task, scope));
   const requested = safeId.safeParse(searchParams.tarea);
   const target = requested.success ? await prisma.task.findUnique({ where: { id: requested.data }, include }) : null;
-  const focused = target && (companyInScope(target.company, scope) || target.assigneeId === scope.userId) && taskInScope(target, scope) && target.status === 'PENDING' && target.type === 'EMAIL' && target.company.acceptanceStatus === 'ACCEPTED' && target.script?.status === 'APPROVED' && taskEmail(target) && !await isSuppressed(prisma, target.companyId) ? target : null;
+  const statuses = await loadContactStatuses(prisma, [...new Set([...candidates.map(t => t.companyId), ...(target ? [target.companyId] : [])])]);
+  const all = candidates.filter(task => statuses.get(task.companyId)?.color !== 'gray');
+  const products = [...new Set(all.flatMap(productLines))].sort((a, b) => a.localeCompare(b, 'es'));
+  if (filters.producto && !products.includes(filters.producto)) filters = { ...filters, producto: '' };
+  const focused = target && (companyInScope(target.company, scope) || target.assigneeId === scope.userId) && taskInScope(target, scope) && target.status === 'PENDING' && target.type === 'EMAIL' && target.company.acceptanceStatus === 'ACCEPTED' && target.script?.status === 'APPROVED' && taskEmail(target) && statuses.get(target.companyId)?.color !== 'gray' ? target : null;
   const filtered = filterTasks(all, filters, day);
   const regular = filtered.filter(task => task.id !== focused?.id);
   const today = regular.filter(task => taskDate(task.dueAt) === day);
@@ -63,7 +67,7 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
       <h3 className="font-semibold"><Link className="font-medium hover:underline" href={`/empresas/${task.companyId}`}><span className={`badge badge-${(task.company.priority ?? 'C').toLowerCase()} mr-2 align-middle`}>{task.company.priority ?? 'Sin prioridad'}</span>{task.company.name}</Link></h3>
       {task.result && <p className="whitespace-pre-wrap text-sm text-slate-600">{task.result}</p>}<p>{task.title}{task.dueAt && taskDate(task.dueAt)! > day && <span className="text-slate-500"> · para el {taskDate(task.dueAt)!.split('-').reverse().join('/')}</span>}</p>
       {task.script && <details className="mt-2"><summary>Guion y emails</summary><ScriptView content={task.script.content as Content}/></details>}
-      {canEdit && task.type === 'EMAIL' && task.script?.status === 'APPROVED' && email && (enabled || selected) && <EmailApproval taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email} firma={firma} open={selected} enabled={enabled}/>}
+      {canEdit && task.type === 'EMAIL' && task.script?.status === 'APPROVED' && email && (enabled || selected) && <EmailApproval status={statuses.get(task.companyId)!} taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email} firma={firma} open={selected} enabled={enabled}/>}
       {canEdit && <form action={recordTaskResult} className="mt-3 flex flex-wrap gap-2"><input type="hidden" name="taskId" value={task.id}/><fieldset className="w-full"><legend>Reunión: fecha y hora (zona del calendario)</legend><label>Fecha<input type="date" name="meetingDate"/></label><label>Hora<input type="time" name="meetingTime"/></label><label>Ubicación<input name="meetingLocation"/></label></fieldset>{results.map(result => <SubmitButton key={result} name="result" value={result} pendingText="Guardando…">{result}</SubmitButton>)}</form>}
     </article>;
   })}</div></section>;

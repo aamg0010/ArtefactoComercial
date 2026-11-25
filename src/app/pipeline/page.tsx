@@ -1,3 +1,5 @@
+import { loadContactStatuses } from '@/lib/contact-status-service';
+import { ContactBadge } from '@/app/contact-status';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -18,6 +20,7 @@ export default async function Pipeline({ searchParams }: { searchParams: { gesti
     include: { company: true }, orderBy: { handledAt: 'desc' },
   }) : [];
   const companies = await prisma.company.findMany({ orderBy: { priority: 'asc' } });
+  const statuses = await loadContactStatuses(prisma, companies.map(c => c.id));
   const repliedCompanies = new Set(replies.map(reply => reply.companyId));
   return <main className="mx-auto max-w-7xl p-5">
     <h1 className="page-title">Pipeline</h1>
@@ -34,6 +37,7 @@ export default async function Pipeline({ searchParams }: { searchParams: { gesti
       <h2 className="flex items-center justify-between font-display text-sm font-semibold uppercase tracking-wide text-try-800">{label}<span className="badge badge-b">{companies.filter(company => company.pipelineStage === stage).length}</span></h2>
       {companies.filter(company => company.pipelineStage === stage).map(company => <article className="mt-2 rounded-xl border border-slate-200 bg-white p-3 shadow-card" key={company.id}>
         <Link href={`/empresas/${company.id}`}><span className={`badge badge-${(company.priority ?? 'C').toLowerCase()} mr-2`}>{company.priority ?? 'C'}</span><span className="font-display text-sm font-medium text-slate-800">{company.name}</span></Link>
+        <ContactBadge status={statuses.get(company.id)!}/>
         {repliedCompanies.has(company.id) && <span className="badge badge-a mt-2">Respondió</span>}
         {company.trygestionEmpresaId && <a className="mt-2 block font-display text-xs text-try-500 hover:text-try-700" href={trygestionEmpresaUrl(company.trygestionEmpresaId)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${company.name} en trygestión`}>trygestión ↗</a>}
       </article>)}

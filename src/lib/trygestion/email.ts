@@ -1,3 +1,5 @@
+import { enforceContactBarrier } from '../contact-status-service';
+import { safeId } from '../mi-dia/script-email';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
@@ -32,7 +34,7 @@ export async function unsubscribeCompany(db: PrismaClient, token: string, secret
 }
 export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { env?: Record<string, string | undefined>; client?: TrygestionClient } = {}) {
   const env = options.env ?? process.env;
-  const input = z.object({ taskId: z.string(), userId: z.string(), approved: z.literal(true), to: z.string().email(), subject: z.string().trim().min(1).max(500), body: z.string().trim().min(1).max(30000), firmaNombre: z.string().trim().max(120).optional(), firmaCargo: z.string().trim().max(120).optional() }).parse(raw);
+  const input = z.object({ contactConfirmed: z.boolean().default(false), taskId: safeId, userId: safeId, approved: z.literal(true), to: z.string().email(), subject: z.string().trim().min(1).max(500), body: z.string().trim().min(1).max(30000), firmaNombre: z.string().trim().max(120).optional(), firmaCargo: z.string().trim().max(120).optional() }).parse(raw);
   if (env.EMAIL_TRANSPORT !== 'trygestion') throw new TrygestionError('EMAIL_COPY_ONLY');
   const client = options.client ?? new TrygestionClient({ env }); if (!client.enabled) throw new TrygestionError('DISABLED');
   if (!env.AUTH_SECRET || !env.AUTH_URL) throw new TrygestionError('UNSUBSCRIBE_CONFIGURATION_REQUIRED');
@@ -42,6 +44,8 @@ export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { e
   const task = await db.task.findUniqueOrThrow({ where: { id: input.taskId }, include: { company: { include: { contacts: true } }, script: true } });
   const company = task.company;
   if (task.status !== 'PENDING' || task.type !== 'EMAIL' || company.acceptanceStatus !== 'ACCEPTED' || task.script?.status !== 'APPROVED') throw new TrygestionError('EMAIL_TASK_NOT_APPROVED');
+  if (await isSuppressed(db, company.id)) throw new TrygestionError('COMPANY_SUPPRESSED');
+  await enforceContactBarrier(db, company.id, input.contactConfirmed, input.userId, 'SEND_EMAIL');
   const recipient = input.to.toLowerCase(); const contacts = company.contacts.filter(c => c.email?.toLowerCase() === recipient);
   if (company.email?.toLowerCase() !== recipient && !contacts.length) {
     // Si la empresa todavía no tiene ningún email, el que escribe y aprueba el comercial pasa a ser su email corporativo.
