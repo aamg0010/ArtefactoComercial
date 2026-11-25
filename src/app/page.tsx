@@ -7,7 +7,7 @@ import { createCompany } from './actions';
 import { importCompaniesAction as importCompanies } from './import-action';
 
 const chipColors = { green: 'bg-emerald-600', amber: 'bg-amber-600', red: 'bg-red-600', gray: 'bg-slate-600' };
-export default async function Home({ searchParams }: { searchParams: { q?: string; mostrar?: string } }) {
+export default async function Home({ searchParams }: { searchParams: { q?: string; mostrar?: string; mensaje?: string } }) {
   const session = await auth();
   const q = searchParams.q?.trim();
   const allCompanies = await prisma.company.findMany({ where: q ? { name: { contains: q, mode: 'insensitive' } } : undefined, include: { contacts: true }, orderBy: { createdAt: 'desc' } });
@@ -21,6 +21,7 @@ export default async function Home({ searchParams }: { searchParams: { q?: strin
       <div><h1 className="page-title">Empresas</h1><p className="page-subtitle mb-0">Base comercial de prospectos y clientes</p></div>
       <form action={async () => { 'use server'; await signOut({ redirectTo: '/login' }); }}><span className="mr-3 font-display text-sm text-slate-500">{session?.user?.email}</span><button className="btn-secondary">Cerrar sesión</button></form>
     </header>
+    {searchParams.mensaje && <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-3 text-emerald-900">{searchParams.mensaje}</p>}
     <section className="grid gap-5 lg:grid-cols-2">
       <div className="card"><h2 className="font-semibold">Nueva empresa</h2>
         <form action={createCompany} className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -43,9 +44,10 @@ export default async function Home({ searchParams }: { searchParams: { q?: strin
         <ContactBadge status={statuses.get(company.id)!}/>
         <p className="text-sm text-slate-600">{[company.city ?? 'Municipio por verificar', company.country].join(', ')} · {company.sector ?? 'Sector pendiente'}</p>
         <p className="text-sm">{company.phone && <a className="mr-3 font-medium text-try-700" href={`tel:${company.phone.replace(/[^\d+]/g, '')}`}>{company.phone}</a>}<span className="text-slate-500">{company.contacts.length} contacto{company.contacts.length === 1 ? '' : 's'}</span></p>
+        {session?.user?.id && session.user.role !== 'DIRECTOR' && <Link className="text-sm text-red-800 underline" href={`/empresas/${company.id}#eliminar`}>Eliminar</Link>}
       </li>)}</ul>
       <div className="mt-4 hidden overflow-x-auto md:block"><table className="w-full text-left text-sm">
-        <thead className="border-b"><tr><th className="p-2">Empresa</th><th>Ubicación</th><th>Sector</th><th>Teléfono</th><th>Email</th><th>Contactos</th><th>Estado de contacto</th></tr></thead>
+        <thead className="border-b"><tr><th className="p-2">Empresa</th><th>Ubicación</th><th>Sector</th><th>Teléfono</th><th>Email</th><th>Contactos</th><th>Estado de contacto</th><th>Acciones</th></tr></thead>
         <tbody>{companies.map(company => <tr className="border-b" key={company.id}>
           <td className="p-2 font-medium"><Link className="font-medium hover:underline" href={`/empresas/${company.id}`}>{company.name}</Link>{company.fictional && <span className="ml-2 badge badge-warning">Ficticia</span>}</td>
           <td>{company.city ?? 'Por verificar'}, {company.country}</td><td>{company.sector ?? '—'}</td>
@@ -53,6 +55,7 @@ export default async function Home({ searchParams }: { searchParams: { q?: strin
           <td className="[overflow-wrap:anywhere]">{company.email ? <a className="text-try-700 hover:underline" href={`mailto:${company.email}`}>{company.email}</a> : '—'}</td>
           <td><Link className="text-try-700 hover:underline" href={`/empresas/${company.id}#contactos`}>{company.contacts.length}</Link></td>
           <td><ContactBadge status={statuses.get(company.id)!}/></td>
+          <td>{session?.user?.id && session.user.role !== 'DIRECTOR' && <Link className="text-red-800 underline" href={`/empresas/${company.id}#eliminar`}>Eliminar</Link>}</td>
         </tr>)}</tbody>
       </table></div>
     </section>

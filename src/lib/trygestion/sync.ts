@@ -20,7 +20,7 @@ export async function stageId(client: TrygestionClient, stage: string, value = p
 export const backoffMs = (attempts: number) => Math.min(2 * 60 * 60_000, 60_000 * 2 ** Math.max(0, attempts - 1));
 class Deferred extends Error {}
 class Skipped extends Error {}
-const payloadSchema = z.object({ companyId: z.string().optional(), stage: z.string().optional(), estado: z.enum(['ganada', 'perdida']).optional(), motivo: z.string().optional(), event: z.unknown().optional(), emails: z.array(z.string()).optional(), domains: z.array(z.string()).optional(), trygestionContactoId: z.string().optional() });
+const payloadSchema = z.object({ companyId: z.string().optional(), stage: z.string().optional(), estado: z.enum(['ganada', 'perdida']).optional(), motivo: z.string().optional(), event: z.unknown().optional(), emails: z.array(z.string()).optional(), domains: z.array(z.string()).optional(), trygestionOportunidadId: z.string().optional(), trygestionContactoId: z.string().optional() });
 const eventSchema = z.object({ titulo: z.string().min(1), descripcion: z.string(), fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), fecha_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), tipo: z.string(), ambito: z.literal('externo'), ubicacion: z.string(), entidad_externa: z.string() });
 const ORIGIN_LINE = 'Origen: try! Comercial · prospecto · prioridad ';
 const LINK_LINE = 'Ficha en try! Comercial: ';
@@ -86,6 +86,14 @@ async function dependency(db: PrismaClient, companyId: string | undefined) {
 }
 async function perform(db: PrismaClient, job: SyncOutbox, client: TrygestionClient) {
   const payload = payloadSchema.parse(job.payload); const key = job.idempotencyKey;
+  if (job.kind === 'OPPORTUNITY_CLOSE_DELETED') {
+    const id = z.string().min(1).parse(payload.trygestionOportunidadId);
+    const reason = z.string().min(1).parse(payload.motivo);
+    try { await client.cambiarEstado(id, 'perdida', reason, key); } catch (error) {
+      if (!(error instanceof TrygestionError && error.status === 404)) throw error;
+    }
+    return;
+  }
   if (job.kind === 'COMPANY_UPSERT') return companyUpsert(db, job.entityId, client, key);
   if (job.kind === 'SUPPRESSION') {
     const company = await db.company.findUnique({ where: { id: payload.companyId ?? job.entityId }, include: { contacts: true } });

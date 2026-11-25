@@ -1,3 +1,4 @@
+import { DeleteCompany } from './delete-company';
 import { ContactHistory } from './contact-history';
 import { loadContactStatuses } from '@/lib/contact-status-service';
 import { ContactBadge, ContactWarning } from '@/app/contact-status';
@@ -123,5 +124,6 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
         return <div className="mt-2" key={field}><dt className="font-semibold">{fieldLabels[field] ?? field}</dt><dd>{String(value)} · {source?.kind ?? 'Confirmado manualmente'} {source?.url && <a className="font-medium hover:underline" href={source.url} target="_blank" rel="noreferrer">{source.url}</a>} · {source?.date.slice(0, 10)}</dd></div>;
       })}</dl></details>;
     })}</section>
+    {canEdit && <DeleteCompany companyId={company.id}/>}
   </main>;
 }
