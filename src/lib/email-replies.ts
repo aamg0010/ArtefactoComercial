@@ -29,7 +29,9 @@ export async function handleEmailReply(db: PrismaClient, raw: unknown) {
       dueAt: new Date(`${input.date}T00:00:00Z`), result: input.note || null,
     } });
     if (input.action === 'etapa') {
+      const previous = await tx.company.findUniqueOrThrow({ where: { id: reply.companyId! } });
       await tx.company.update({ where: { id: reply.companyId! }, data: { pipelineStage: input.stage } });
+      if (previous.pipelineStage !== input.stage) await tx.auditLog.create({ data: { userId: user.id, entityType: 'Company', entityId: reply.companyId!, action: 'PIPELINE_STAGE', metadata: { from: previous.pipelineStage, to: input.stage, replyId: reply.id } } });
       await enqueuePipeline(tx, reply.companyId!, input.stage, `reply:${reply.id}`);
     }
     return tx.emailReply.update({ where: { id: reply.id }, data: { status: 'HANDLED', handledAt: new Date(), handledById: user.id, handledAction: input.action } });

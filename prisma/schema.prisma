@@ -98,6 +98,7 @@ model User {
   tasks Task[] @relation("TaskAssignee")
   activities Activity[] @relation("ActivityAuthor")
   handledReplies EmailReply[]
+  approvedDispatches EmailDispatch[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -313,6 +314,8 @@ model Activity {
   type ActivityType
   result String?
   body String?
+  interlocutor String? @db.VarChar(200)
+  meetingDetails String?
   trygestionActividadId String?
   trygestionEventoId String?
   createdAt DateTime @default(now())
@@ -467,6 +470,14 @@ model EmailDispatch {
   taskId String @id
   companyId String
   approvedBy String
+  approvedById String?
+  approver User? @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+  recipient String?
+  subject String?
+  body String? @db.Text
+  signatureName String?
+  signatureTitle String?
+  trygestionId String?
   contentHash String
   status String
   opportunityId String?

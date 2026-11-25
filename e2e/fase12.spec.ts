@@ -1,0 +1,64 @@
+import { expect, test } from '@playwright/test';
+import { PrismaClient } from '@prisma/client';
+import { e2eDatabaseUrl, e2eEnvironment } from './environment';
+import { madridDate } from '../src/lib/dates';
+import { startTrygestionMock } from '../src/lib/trygestion/testing/mock-server';
+
+test('trazabilidad: llamada y email, historial, filtro y CSV', async ({ page }) => {
+  const db = new PrismaClient({ datasources: { db: { url: e2eDatabaseUrl } } });
+  const mock = await startTrygestionMock(3199);
+  const companyId = 'fase12-e2e-empresa';
+  try {
+    const sales = await db.user.findUniqueOrThrow({ where: { email: 'comercial@try.company' } });
+    await db.company.create({ data: { id: companyId, name: '[SIMULADA] Trazabilidad Fase12', normalizedName: companyId, fictional: true, country: 'ES', email: 'info@fase12.invalid', ownerId: sales.id } });
+    const script = await db.script.create({ data: { companyId, author: 'E2E', status: 'APPROVED', content: { emails: [{ dia: 1, asunto: 'Propuesta Fase12', cuerpo: 'Texto aprobado Fase12\nSegunda línea' }] } } });
+    const call = await db.task.create({ data: { companyId, type: 'CALL', title: 'Llamada Fase12', assigneeId: sales.id, dueAt: new Date(madridDate()) } });
+    const email = await db.task.create({ data: { companyId, type: 'EMAIL', title: 'Email Fase12', assigneeId: sales.id, scriptId: script.id, scriptEmailIndex: 0, dueAt: new Date(madridDate()) } });
+    await page.route(/https?:\/\/([^/]+\.)?(trygestion\.com|trycompany\.es)(\/|$)/, route => route.abort());
+    await page.goto('/login');
+    await page.getByLabel('Email', { exact: true }).fill(sales.email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(e2eEnvironment.SEED_SALES_PASSWORD);
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+    await expect(page).toHaveURL('http://localhost:3100/');
+    await page.goto('/mi-dia');
+    const card = page.locator(`#tarea-${call.id}`);
+    await card.getByLabel('Notas', { exact: true }).fill('Hablamos del presupuesto; "urgente"\nLlamar el lunes');
+    await card.getByLabel('Con quién se habló').fill('Ana de compras');
+    await card.getByRole('button', { name: 'Contactado', exact: true }).click();
+    await expect(card).toHaveCount(0);
+    await page.goto(`/mi-dia?tarea=${email.id}`);
+    const emailCard = page.locator(`#tarea-${email.id}`);
+    await emailCard.getByLabel('He revisado el contenido y apruebo este envío.').check();
+    await emailCard.getByRole('button', { name: 'Aprobar y enviar email', exact: true }).click();
+    await expect(page).toHaveURL(/email=EMAIL_SENT/);
+    expect(mock.state.emails).toHaveLength(1);
+    await page.goto(`/empresas/${companyId}`);
+    const history = page.getByRole('region', { name: 'Historial de contactos', exact: true });
+    await expect(history).toContainText('Llamada');
+    await expect(history).toContainText('Ana de compras');
+    await expect(history).toContainText('Hablamos del presupuesto');
+    await expect(history).toContainText(`por ${sales.name || sales.email}`);
+    await expect(history).toContainText(/\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/);
+    await history.getByText('Ver texto completo', { exact: true }).click();
+    await expect(history).toContainText('Texto aprobado Fase12');
+    await history.getByRole('link', { name: 'Email', exact: true }).click();
+    await expect(history).not.toContainText('Ana de compras');
+    await expect(history).toContainText('Propuesta Fase12');
+    const downloadPromise = page.waitForEvent('download');
+    await history.getByRole('link', { name: 'Descargar historial (CSV)' }).click();
+    const download = await downloadPromise;
+    const stream = await download.createReadStream();
+    const chunks: Buffer[] = []; for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+    const csv = Buffer.concat(chunks).toString('utf8');
+    expect(csv).toContain('"Fecha";"Hora"');
+    expect(csv).toContain('Texto aprobado Fase12');
+    expect(csv).not.toContain('Ana de compras');
+    await page.goto(`/empresas/${companyId}`);
+    await expect(page.getByRole('region', { name: 'Estado de contacto' })).toContainText('Último contacto: Email');
+  } finally {
+    await db.emailDispatch.deleteMany({ where: { companyId } });
+    await db.auditLog.deleteMany({ where: { entityId: companyId } });
+    await db.company.deleteMany({ where: { id: companyId } });
+    await db.$disconnect(); await mock.close();
+  }
+});
