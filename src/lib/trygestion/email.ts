@@ -67,13 +67,14 @@ export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { e
   const firmante = (input.firmaNombre ?? user.signatureName ?? user.name ?? '').trim();
   const cargo = (input.firmaCargo ?? user.signatureTitle ?? '').trim();
   const hash = createHash('sha256').update(JSON.stringify([recipient, input.subject, input.body])).digest('hex');
+  const snapshot = { recipient, subject: input.subject, body: input.body, signatureName: firmante, signatureTitle: cargo, approvedById: user.id, approvedBy: user.email };
   const reserved = await db.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`email:${task.id}`}))`;
     const previous = await tx.emailDispatch.findUnique({ where: { taskId: task.id } });
     if (previous && previous.contentHash !== hash) throw new TrygestionError('EMAIL_CONTENT_CHANGED');
     if (previous?.status === 'SENT') return false;
     if (previous?.status === 'PROCESSING' && Date.now() - previous.updatedAt.getTime() < 120000) throw new TrygestionError('EMAIL_IN_PROGRESS');
-    await tx.emailDispatch.upsert({ where: { taskId: task.id }, update: { status: 'PROCESSING', lastError: null }, create: { taskId: task.id, companyId: company.id, approvedBy: user.email, contentHash: hash, opportunityId: company.trygestionOportunidadId, status: 'PROCESSING' } }); return true;
+    await tx.emailDispatch.upsert({ where: { taskId: task.id }, update: { ...snapshot, status: 'PROCESSING', lastError: null }, create: { ...snapshot, taskId: task.id, companyId: company.id, contentHash: hash, opportunityId: company.trygestionOportunidadId, status: 'PROCESSING' } }); return true;
   });
   if (!reserved) return { sent: true, duplicate: true };
   try {
@@ -81,8 +82,8 @@ export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { e
     const unsubscribeUrl = new URL(`/baja/${unsubscribeToken(company.id, env.AUTH_SECRET)}`, root).toString();
     const text = `${input.body}\n\ntry! company · Contacto comercial B2B. Para dejar de recibir comunicaciones responde BAJA o confirma tu baja: ${unsubscribeUrl}`;
     const html = `<p>${text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')}</p>`;
-    await client.enviarEmail({ to: recipient, subject: input.subject, text, html, approvedBy: user.email, ...(firmante ? { firmante } : {}), ...(cargo ? { cargo } : {}), externalRef: `task:${task.id}`, unsubscribeUrl, ...(company.trygestionOportunidadId ? { oportunidadId: company.trygestionOportunidadId } : {}) });
-    await db.emailDispatch.update({ where: { taskId: task.id }, data: { status: 'SENT', sentAt: new Date() } });
+    const response = await client.enviarEmail({ to: recipient, subject: input.subject, text, html, approvedBy: user.email, ...(firmante ? { firmante } : {}), ...(cargo ? { cargo } : {}), externalRef: `task:${task.id}`, unsubscribeUrl, ...(company.trygestionOportunidadId ? { oportunidadId: company.trygestionOportunidadId } : {}) });
+    await db.emailDispatch.update({ where: { taskId: task.id }, data: { status: 'SENT', sentAt: new Date(), trygestionId: response.id ?? response.messageId ?? null } });
     return { sent: true, duplicate: false };
   } catch (error) {
     const code = error instanceof TrygestionError ? error.code : 'EMAIL_SEND_ERROR';

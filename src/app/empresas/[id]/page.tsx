@@ -1,3 +1,4 @@
+import { ContactHistory } from './contact-history';
 import { loadContactStatuses } from '@/lib/contact-status-service';
 import { ContactBadge, ContactWarning } from '@/app/contact-status';
 import { ReplyCards } from '../../pipeline/reply-cards';
@@ -41,7 +42,7 @@ const okMessages: Record<string, string> = {
   'contacto-anadido': 'Contacto añadido.', 'contacto-borrado': 'Contacto borrado (también se borrará en trygestión).',
   consentimiento: 'Consentimiento actualizado.', 'empresa-guardada': 'Datos de la empresa guardados.',
 };
-export default async function CompanyDetail({ params, searchParams }: { params: { id: string }; searchParams: { error?: string; done?: string; ok?: string } }) {
+export default async function CompanyDetail({ params, searchParams }: { params: { id: string }; searchParams: { error?: string; done?: string; ok?: string; medio?: string; limite?: string } }) {
   const session = await auth();
   const replies = await prisma.emailReply.findMany({ where: { companyId: params.id }, include: { company: true }, orderBy: [{ status: 'asc' }, { receivedAt: 'desc' }] });
   const canEdit = Boolean(session?.user?.id) && session?.user?.role !== 'DIRECTOR';
@@ -71,6 +72,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
       </div>
     </section>}
     <section aria-label="Respuestas recibidas" className="card p-4"><h2 className="text-lg font-semibold">Respuestas recibidas</h2><ReplyCards replies={replies} canEdit={canEdit}/>{!replies.length && <p>No hay respuestas recibidas.</p>}</section>
+    <ContactHistory companyId={company.id} medium={searchParams.medio} limit={searchParams.limite}/>
     <PlacesView companyId={company.id} country={company.country}/>
     {searchParams.error && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">{errorMessages[searchParams.error] ?? 'No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.'}</p>}
     {(searchParams.done || searchParams.ok) && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-emerald-900">{okMessages[searchParams.ok ?? ''] ?? 'Operación completada.'}</p>}

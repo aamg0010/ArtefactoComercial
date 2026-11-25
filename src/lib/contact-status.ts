@@ -1,20 +1,24 @@
+import { historyDate } from './contact-history';
 import { madridDate, taskDate } from './dates';
 import { REMINDER_TITLE } from './guia/engine';
 
 export type ContactColor = 'green' | 'amber' | 'red' | 'gray';
-export type ContactStatus = { color: ContactColor; label: string; detail: string; lastContact: string | null; nextContact: string | null };
+export type ContactStatus = { color: ContactColor; label: string; detail: string; lastContact: string | null; nextContact: string | null; lastContactDetail?: string; historyHref?: string };
 export type ContactFacts = {
   acceptanceStatus: string; pipelineStage: string; suppressed: boolean;
-  activities: { type: string; createdAt: Date }[];
+  activities: { type: string; createdAt: Date; author?: { name: string | null; email: string } | null }[];
   tasks: { type: string; status: string; completedAt: Date | null; dueAt: Date | null; title: string; companyCadenceId?: string | null; cadenceStep?: { dayOffset: number; action: string } | null }[];
   cadences: { id: string; status: string }[];
   emailReplies: { status: string }[];
   sentEmails: Date[];
+  sentEmailDetails?: { sentAt: Date | null; approvedBy: string; approver: { name: string | null; email: string } | null }[];
 };
 const shortDate = (day: string) => `${day.slice(8, 10)}/${day.slice(5, 7)}`;
 /** Event instants use Madrid; task dueAt is a UTC business date. No database or clock side effects. */
 export function contactStatus(facts: ContactFacts, now = new Date()): ContactStatus {
   const today = madridDate(now);
+  const evidence = [...facts.activities.map(a => ({ at: a.createdAt, medium: ({ CALL: 'Llamada', EMAIL: 'Email', MEETING: 'Reunión' } as Record<string, string>)[a.type], user: a.author?.name || a.author?.email || 'Usuario no registrado' })), ...(facts.sentEmailDetails ?? []).filter(e => e.sentAt).map(e => ({ at: e.sentAt!, medium: 'Email', user: e.approver?.name || e.approver?.email || e.approvedBy }))].filter(e => e.medium).sort((a,b) => b.at.getTime() - a.at.getTime())[0];
+  const lastContactDetail = evidence ? `Último contacto: ${evidence.medium} el ${historyDate(evidence.at).date.slice(0, 5)} a las ${historyDate(evidence.at).time} por ${evidence.user}` : undefined;
   const instants = [...facts.activities.filter(a => ['CALL', 'EMAIL', 'MEETING'].includes(a.type)).map(a => a.createdAt),
     ...facts.tasks.filter(t => ['CALL', 'EMAIL'].includes(t.type) && t.status === 'COMPLETED' && t.completedAt).map(t => t.completedAt!), ...facts.sentEmails];
   const lastContact = instants.length ? madridDate(new Date(Math.max(...instants.map(d => d.getTime())))) : null;
@@ -24,7 +28,7 @@ export function contactStatus(facts: ContactFacts, now = new Date()): ContactSta
   const nextContact = next ? taskDate(next.dueAt) : null;
   const lastText = lastContact ? `Contactada el ${shortDate(lastContact)}` : 'Sin contacto registrado';
   const detail = `${lastText}${nextContact ? ` · Próximo contacto el ${shortDate(nextContact)} (${next?.cadenceStep ? `Día ${next.cadenceStep.dayOffset} · ${next.cadenceStep.action.split(';')[0]}` : next!.title})` : ' · Sin próximo contacto previsto'}`;
-  const result = (color: ContactColor, label: string, text = detail): ContactStatus => ({ color, label, detail: text, lastContact, nextContact });
+  const result = (color: ContactColor, label: string, text = detail): ContactStatus => ({ color, label, detail: text, lastContact, nextContact, ...(lastContactDetail ? { lastContactDetail } : {}) });
   if (facts.suppressed) return result('gray', 'No contactar', 'Tiene baja: no se puede contactar');
   if (facts.pipelineStage === 'WON') return result('gray', 'Cliente');
   if (facts.acceptanceStatus === 'DISCARDED' || facts.pipelineStage === 'LOST') return result('gray', 'No contactar', `Empresa ${facts.pipelineStage === 'LOST' ? 'perdida' : 'descartada'} · ${detail}`);

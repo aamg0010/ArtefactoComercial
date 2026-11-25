@@ -28,7 +28,7 @@ export const e2eEnvironment = {
   TRYGESTION_URL: 'http://127.0.0.1:3199/api',
   TRYGESTION_TOKEN: 'trygestion-local-test-token',
   TRYGESTION_STAGE_MAP: '',
-  EMAIL_TRANSPORT: '',
+  EMAIL_TRANSPORT: 'trygestion',
   TRYGESTION_WEB_URL: 'https://trygestion.com',
   APP_PUBLIC_URL: 'http://localhost:3100',
 };

@@ -10,7 +10,7 @@ import { TrygestionError } from '@/lib/trygestion/client';
 export async function recordTaskResult(formData: FormData) {
   const session = await auth(); if (!session?.user?.id || session.user.role === 'DIRECTOR') throw new Error('No autorizado');
   const date = String(formData.get('meetingDate') ?? ''); const time = String(formData.get('meetingTime') ?? '');
-  await completeTask(prisma, String(formData.get('taskId')), String(formData.get('result')), session.user.id, date && time ? { date, time, location: String(formData.get('meetingLocation') ?? '') } : undefined);
+  await completeTask(prisma, String(formData.get('taskId')), String(formData.get('result')), session.user.id, date && time ? { date, time, location: String(formData.get('meetingLocation') ?? '') } : undefined, { body: String(formData.get('notes') ?? ''), interlocutor: String(formData.get('interlocutor') ?? '') });
   revalidatePath('/', 'layout');
 }
 export async function approveEmail(formData: FormData) {

@@ -182,7 +182,11 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
   it('una llamada con reunión registra actividad, evento y etapa', async () => {
     const local = await company();
     const task = await db.task.create({ data: { companyId: local.id, type: 'CALL', title: 'Primera llamada' } });
-    await completeTask(db, task.id, 'Reunión agendada', userId, { date: '2026-11-27', time: '10:30', location: 'Oficina del cliente' });
+    await expect(completeTask(db, task.id, 'Contactado', userId, undefined, { body: 'x'.repeat(2001) })).rejects.toThrow();
+    await expect(completeTask(db, task.id, 'Contactado', userId, undefined, { interlocutor: 'x'.repeat(201) })).rejects.toThrow();
+    await completeTask(db, task.id, 'Reunión agendada', userId, { date: '2026-11-27', time: '10:30', location: 'Oficina del cliente' }, { body: 'Solicita presupuesto\nLlamar el lunes', interlocutor: 'Ana, compras' });
+    expect(await db.activity.findFirstOrThrow({ where: { taskId: task.id, type: 'CALL' } })).toMatchObject({ body: 'Solicita presupuesto\nLlamar el lunes', interlocutor: 'Ana, compras', authorId: userId, result: 'Reunión agendada' });
+    expect(await db.activity.findFirstOrThrow({ where: { taskId: task.id, type: 'CALL' } })).toMatchObject({ body: 'Solicita presupuesto\nLlamar el lunes', meetingDetails: expect.stringContaining('2026-11-27 10:30') });
     await drain(local.id);
     expect(mock.state.activities).toEqual([expect.objectContaining({ tipo: 'llamada', titulo: 'Reunión agendada', descripcion: expect.stringContaining('Registrado por Comercial pruebas en try! Comercial.') })]);
     expect(String(mock.state.events[0].descripcion)).toContain('Agendada por Comercial pruebas desde try! Comercial.');
@@ -271,12 +275,17 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     const task2 = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Email día 4', scriptId: script.id } });
     await sendTaskEmail(db, { ...input, taskId: task2.id, firmaNombre: 'Andrés Martínez', firmaCargo: 'Gerente' }, { env, client: client() });
     expect(mock.state.emails.at(-1)).toMatchObject({ firmante: 'Andrés Martínez', cargo: 'Gerente' });
+    expect(await db.emailDispatch.findUniqueOrThrow({ where: { taskId: task2.id } })).toMatchObject({ recipient: input.to, subject: input.subject, body: input.body, signatureName: 'Andrés Martínez', signatureTitle: 'Gerente', approvedById: userId, approvedBy: 'comercial-trygestion@test.local', status: 'SENT', sentAt: expect.any(Date), trygestionId: mock.state.emails.at(-1)!.id });
     expect(await db.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({ signatureName: 'Andrés Martínez', signatureTitle: 'Gerente' });
     const task3 = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Email día 8', scriptId: script.id } });
     await sendTaskEmail(db, { ...input, taskId: task3.id }, { env, client: client() });
     expect(mock.state.emails.at(-1)).toMatchObject({ firmante: 'Andrés Martínez', cargo: 'Gerente' });
     await db.user.update({ where: { id: userId }, data: { signatureName: null, signatureTitle: null } });
     await expect(sendTaskEmail(db, { ...input, body: 'Texto cambiado' }, { env, client: client() })).rejects.toThrow('EMAIL_CONTENT_CHANGED');
+    const failed = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Fallo simulado', scriptId: script.id } });
+    mock.state.failures.set('POST /comercial/email/enviar', [500]);
+    await expect(sendTaskEmail(db, { ...input, taskId: failed.id, firmaNombre: 'Firma de fallo', firmaCargo: 'Comercial' }, { env, client: client() })).rejects.toThrow();
+    expect(await db.emailDispatch.findUniqueOrThrow({ where: { taskId: failed.id } })).toMatchObject({ status: 'FAILED', lastError: expect.any(String), recipient: input.to, subject: input.subject, body: input.body, signatureName: 'Firma de fallo', signatureTitle: 'Comercial', approvedById: userId, sentAt: null });
   });
 
   it('nunca envía a trygestión una empresa simulada', async () => {

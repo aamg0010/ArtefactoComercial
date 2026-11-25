@@ -20,7 +20,7 @@ export function DayGuide({ guide, canEdit }: { guide: ReturnType<typeof buildGui
           {canEdit && group.id !== 'tomorrow' && <div className="mt-3 flex min-w-0 flex-wrap gap-2">
             {item.taskId && <>
               <form action={recordTaskResult} className="flex min-w-0 flex-wrap gap-2">
-                <input type="hidden" name="taskId" value={item.taskId}/>
+                <input type="hidden" name="taskId" value={item.taskId}/><label>Notas<textarea name="notes" maxLength={2000}/></label><label>Con quién se habló<input name="interlocutor" maxLength={200}/></label>
                 <label className="min-w-0">Resultado<select name="result" className="max-w-full"><option>No contesta</option><option>Buzón</option><option>Contactado</option><option>Interesado</option><option>No interesado</option><option>Baja</option></select></label>
                 <SubmitButton pendingText="Guardando…">Hecho</SubmitButton>
               </form>
