@@ -19,8 +19,9 @@ const serif = DM_Serif_Display({ subsets: ['latin'], weight: ['400'], variable: 
 export default async function Layout({ children }: Readonly<{ children: React.ReactNode }>) {
   const simulated = llmConfiguration().simulated;
   const session = await auth();
-  const important = session?.user?.id ? (await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES' })).important : 0;
-  const teamImportant = session?.user?.id && session.user.role === 'ADMIN' ? (await loadGuide(prisma, { userId: session.user.id, role: 'ADMIN', team: true })).important : undefined;
+  // Por defecto todos ven todo el equipo; «Solo lo mío» (equipo=0) usa el contador propio.
+  const important = session?.user?.id ? (await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES', team: true })).important : 0;
+  const ownImportant = session?.user?.id ? (await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES' })).important : undefined;
   return <html lang="es" className={`${display.variable} ${serif.variable}`}>
     <body>
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur">
@@ -29,7 +30,7 @@ export default async function Layout({ children }: Readonly<{ children: React.Re
             <Image src="/brand/try-company.png" alt="try! company" width={96} height={51} priority className="h-9 w-auto" />
             <span className="hidden border-l border-slate-200 pl-3 font-display text-sm font-semibold tracking-wide text-try-900 sm:inline">Comercial</span>
           </Link>
-          <Suspense><MainNav important={important} teamImportant={teamImportant}/></Suspense>
+          <Suspense><MainNav important={important} ownImportant={ownImportant}/></Suspense>
         </div>
         {simulated && <div className="border-t border-amber-100 bg-amber-50"><p role="status" className="mx-auto max-w-7xl rounded-none border-0 bg-transparent px-5 py-1.5 font-display text-xs text-amber-800">IA en modo simulado</p></div>}
       </header>

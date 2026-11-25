@@ -11,7 +11,7 @@ const statusLabels = [['PENDING', 'Pendientes'], ['PROCESSING', 'En curso'], ['D
 const kindLabels: Record<string, string> = { COMPANY_UPSERT: 'Empresa', CONTACT_UPSERT: 'Contacto', OPPORTUNITY_STAGE: 'Etapa', OPPORTUNITY_STATUS: 'Ganada/perdida', ACTIVITY: 'Actividad', EVENT: 'Reunión', SUPPRESSION: 'Baja' };
 
 export default async function IntegrationPage() {
-  const session = await auth(); if (!session?.user) redirect('/login'); if (session.user.role !== 'ADMIN') redirect('/');
+  const session = await auth(); if (!session?.user) redirect('/login'); if (session.user.role === 'DIRECTOR') redirect('/');
   let client: TrygestionClient | null = null; let status = 'Desactivada: configura TRYGESTION_URL y TRYGESTION_TOKEN en .env.';
   try { client = new TrygestionClient(); } catch { status = 'Configuración no válida: revisa TRYGESTION_URL.'; }
   if (client?.enabled) try {

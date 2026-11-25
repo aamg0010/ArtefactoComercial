@@ -45,7 +45,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     contacts: true, sourceIdentities: true, evidence: { orderBy: { createdAt: 'desc' } }, researchReports: { orderBy: { version: 'desc' }, include: { score: true } }, scripts: { orderBy: { version: 'desc' } },
   } });
   if (!company) notFound();
-  const guide = session?.user?.id ? await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES' }, new Date(), undefined, company.id) : null;
+  const guide = session?.user?.id ? await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES', team: true }, new Date(), undefined, company.id) : null;
   const notices = guide?.groups.filter(g => ['overdue', 'next', 'stalled', 'closed', 'reminders'].includes(g.id)).flatMap(g => g.items) ?? [];
   const suppressed = await isSuppressed(prisma, company.id);
   const products = await prisma.product.findMany({ where: { active: true }, orderBy: { line: 'asc' } });

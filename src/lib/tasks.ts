@@ -17,7 +17,7 @@ export async function completeTask(prisma: PrismaClient, taskId: string, result:
     const company = await tx.company.findUniqueOrThrow({ where: { id: current.companyId } });
     if (authorId) {
       const user = await tx.user.findUniqueOrThrow({ where: { id: safeId.parse(authorId) } });
-      const scope = { userId: user.id, role: user.role, team: user.role === 'ADMIN' };
+      const scope = { userId: user.id, role: user.role, team: true };
       if (user.role === 'DIRECTOR' || !companyInScope(company, scope) || !taskInScope(current, scope)) throw new Error('No autorizado');
     }
     if (current.status !== 'PENDING') return current;

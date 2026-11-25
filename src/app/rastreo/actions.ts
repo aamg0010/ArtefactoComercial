@@ -17,7 +17,6 @@ export async function prospectingAction(form: FormData) {
   let failed = false;
   let runIds: string[] = [];
   try {
-    if (action !== 'run' && session.user.role !== 'ADMIN') throw new Error('Sólo administración puede configurar perfiles');
     const id = String(form.get('profileId') ?? '');
     if (action === 'save') {
       const sources = [...new Set(form.getAll('sources').map(String))];

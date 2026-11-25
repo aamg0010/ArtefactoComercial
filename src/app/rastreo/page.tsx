@@ -19,7 +19,7 @@ const placeholders: Record<string, string> = {
   cnaeCodes: '1102; 1043',
 };
 export default async function Prospecting({ searchParams }: { searchParams: { error?: string; done?: string; ejecucion?: string } }) {
-  const session = await auth(); const manage = session?.user?.role === 'ADMIN';
+  const session = await auth(); const manage = Boolean(session?.user?.id) && session?.user?.role !== 'DIRECTOR';
   const profiles = await prisma.searchProfile.findMany({ orderBy: { createdAt: 'asc' } });
   const google = googlePlacesConfigured(); const mockOk = simulationAllowed(); const einforma = Boolean(einformaCredentials());
   // En producción no se ofrece la fuente simulada; Google sin clave se marca como no disponible.

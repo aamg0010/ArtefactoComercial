@@ -10,10 +10,10 @@ const items = [
   { href: '/integracion', label: 'Integración' },
 ];
 
-export function MainNav({ important = 0, teamImportant }: { important?: number; teamImportant?: number }) {
+export function MainNav({ important = 0, ownImportant }: { important?: number; ownImportant?: number }) {
   const path = usePathname() ?? '/';
   const params = useSearchParams();
-  const count = path === '/mi-dia' && params.get('equipo') === '1' && teamImportant !== undefined ? teamImportant : important;
+  const count = path === '/mi-dia' && params.get('equipo') === '0' && ownImportant !== undefined ? ownImportant : important;
   // Páginas públicas (acceso y baja): sin menú.
   if (path.startsWith('/login') || path.startsWith('/baja')) return null;
   return <nav aria-label="Menú principal" className="flex flex-wrap items-center gap-1">

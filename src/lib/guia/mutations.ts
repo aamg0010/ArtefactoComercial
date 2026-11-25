@@ -25,12 +25,12 @@ export async function mutateGuide(db: PrismaClient, raw: unknown, now = new Date
     const companyId = original?.companyId ?? ('companyId' in input ? input.companyId : '');
     await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR UPDATE`;
     const company = await tx.company.findUniqueOrThrow({ where: { id: companyId }, include: guideInclude });
-    if (!companyInScope(company, { userId: user.id, role: user.role, team: user.role === 'ADMIN' })) throw new Error('No autorizado');
+    if (!companyInScope(company, { userId: user.id, role: user.role, team: true })) throw new Error('No autorizado');
     if (company.acceptanceStatus !== 'ACCEPTED' || company.suppressions.length) throw new Error('Empresa no disponible');
     if (input.action === 'pause') return pauseInTransaction(tx, company, input.cadenceId, now, user.id);
     if (input.action === 'postpone') {
       const task = company.tasks.find(t => t.id === input.taskId)!;
-      if (!taskInScope(task, { userId: user.id, role: user.role, team: user.role === 'ADMIN' })) throw new Error('No autorizado');
+      if (!taskInScope(task, { userId: user.id, role: user.role, team: true })) throw new Error('No autorizado');
       const actual = task.dueAt?.toISOString().slice(0, 10) ?? null;
       // A replay of the same form cannot keep moving the date.
       if (task.status !== 'PENDING' || actual !== input.expectedDay) return task;
