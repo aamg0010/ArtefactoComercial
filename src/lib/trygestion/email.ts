@@ -1,5 +1,5 @@
 import { enforceContactBarrier } from '../contact-status-service';
-import { safeId } from '../mi-dia/script-email';
+import { safeId, defaultSignature, personalizeGreeting, emailBodyWithoutFooter } from '../mi-dia/script-email';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
@@ -58,18 +58,22 @@ export async function sendTaskEmail(db: PrismaClient, raw: unknown, options: { e
     });
   }
   if (contacts.some(c => c.requiresConsent && c.consentStatus !== 'GRANTED')) throw new TrygestionError('EMAIL_CONSENT_REQUIRED');
-  if (/\[(?:TELÉFONO|WEB)\]/i.test(input.body)) throw new TrygestionError('EMAIL_RESOLVE_VARIABLES');
+  input.body = personalizeGreeting(emailBodyWithoutFooter(input.body), recipient, company.contacts);
+  if (/\[(?:TELÉFONO|WEB|NOMBRE)\]/i.test(input.body)) throw new TrygestionError('EMAIL_RESOLVE_VARIABLES');
   if (await isSuppressed(db, company.id)) throw new TrygestionError('COMPANY_SUPPRESSED');
   // Firma: lo escrito en el formulario se guarda como firma del usuario para los próximos envíos.
   if (input.firmaNombre !== undefined || input.firmaCargo !== undefined) {
     await db.user.update({ where: { id: user.id }, data: { ...(input.firmaNombre !== undefined ? { signatureName: input.firmaNombre || null } : {}), ...(input.firmaCargo !== undefined ? { signatureTitle: input.firmaCargo || null } : {}) } });
   }
-  const firmante = (input.firmaNombre ?? user.signatureName ?? user.name ?? '').trim();
-  const cargo = (input.firmaCargo ?? user.signatureTitle ?? '').trim();
+  const defaults = defaultSignature(user);
+  const firmante = (input.firmaNombre ?? defaults.nombre).trim() || defaults.nombre;
+  const cargo = (input.firmaCargo ?? defaults.cargo).trim();
   const hash = createHash('sha256').update(JSON.stringify([recipient, input.subject, input.body])).digest('hex');
   const snapshot = { recipient, subject: input.subject, body: input.body, signatureName: firmante, signatureTitle: cargo, approvedById: user.id, approvedBy: user.email };
   const reserved = await db.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`email:${task.id}`}))`;
+    const currentTask = await tx.task.findUniqueOrThrow({ where: { id: task.id } });
+    if (currentTask.scriptId !== task.scriptId || currentTask.status !== 'PENDING') throw new TrygestionError('EMAIL_CONTENT_CHANGED');
     const previous = await tx.emailDispatch.findUnique({ where: { taskId: task.id } });
     if (previous && previous.contentHash !== hash) throw new TrygestionError('EMAIL_CONTENT_CHANGED');
     if (previous?.status === 'SENT') return false;

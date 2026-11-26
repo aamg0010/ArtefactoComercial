@@ -38,3 +38,22 @@ it('rechaza una respuesta mock que no cumple el schema', async () => {
   await expect(generateJson(input, { ...context, env: { LLM_PROVIDER: 'mock' }, mockResponse: { ok: 'incorrecto' } })).rejects.toThrow('VALIDATION_ERROR');
   expect(create.mock.calls[0][0].data.success).toBe(false);
 });
+
+it.each(['{"ok":true}', '  ```json\n{"ok":true}\n```  '])('script usa Anthropic y acepta JSON con o sin bloque', async answer => {
+  const { context, create } = setup();
+  const env = { LLM_PROVIDER: 'openai', LLM_MODEL: 'general-model', OPENAI_API_KEY: 'test', SCRIPT_LLM_PROVIDER: 'anthropic', SCRIPT_LLM_MODEL: 'sonnet-configured', ANTHROPIC_API_KEY: 'test' };
+  expect(llmConfiguration(env, 'research')).toMatchObject({ provider: 'openai', model: 'general-model' });
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ model: 'sonnet-real', content: [{ type: 'text', text: answer }] }));
+  await generateJson(input, { ...context, purpose: 'script', env, fetcher });
+  expect(fetcher.mock.calls[0][0]).toContain('anthropic.com');
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({ model: 'sonnet-configured', max_tokens: 8000 });
+  expect(create.mock.calls[0][0].data).toMatchObject({ provider: 'anthropic', model: 'sonnet-real', success: true });
+});
+it('sin clave de Anthropic vuelve al general con clave y deja constancia sin usar mock', async () => {
+  const { context, create } = setup();
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ model: 'general-real', output: [{ content: [{ type: 'output_text', text: '{"ok":true}' }] }] }));
+  await generateJson(input, { ...context, purpose: 'script', env: { LLM_PROVIDER: 'openai', LLM_MODEL: 'general', SCRIPT_LLM_PROVIDER: 'anthropic', SCRIPT_LLM_MODEL: 'sonnet', OPENAI_API_KEY: 'test' }, fetcher });
+  expect(fetcher.mock.calls[0][0]).toContain('openai.com');
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).model).toBe('general');
+  expect(create.mock.calls[0][0].data).toMatchObject({ provider: 'openai', model: 'general-real', success: true, error: 'SCRIPT_ANTHROPIC_KEY_MISSING_FALLBACK_GENERAL' });
+});

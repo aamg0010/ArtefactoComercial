@@ -5,13 +5,20 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import { TrygestionClient, trygestionConfiguration } from '../trygestion/client';
 
 type Environment = Record<string, string | undefined>;
-export function llmConfiguration(env: Environment = process.env) {
-  const requested = env.LLM_PROVIDER || 'mock';
+export function llmConfiguration(env: Environment = process.env, purpose?: string) {
+  const general = env.LLM_PROVIDER || 'mock';
+  let requested = purpose === 'script' ? env.SCRIPT_LLM_PROVIDER || general : general;
+  let fallback: string | undefined;
+  if (purpose === 'script' && requested === 'anthropic' && !env.ANTHROPIC_API_KEY?.trim()) {
+    requested = general;
+    fallback = 'SCRIPT_ANTHROPIC_KEY_MISSING_FALLBACK_GENERAL';
+  }
   if (!['mock', 'anthropic', 'openai', 'trygestion'].includes(requested)) throw new Error('LLM_PROVIDER inválido.');
   const key = requested === 'trygestion' ? (trygestionConfiguration(env).enabled ? env.TRYGESTION_TOKEN : undefined) : requested === 'anthropic' ? env.ANTHROPIC_API_KEY : env.OPENAI_API_KEY;
   const provider = requested === 'mock' || !key?.trim() ? 'mock' : requested;
   return { provider, key: provider === 'mock' ? undefined : key,
-    model: provider === 'mock' ? 'deterministic-v1' : env.LLM_MODEL || (provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-4.1-mini'),
+    model: provider === 'mock' ? 'deterministic-v1' : (!fallback && purpose === 'script' ? env.SCRIPT_LLM_MODEL : undefined) || env.LLM_MODEL || (provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-4.1-mini'),
+    fallback,
     simulated: provider === 'mock' };
 }
 
@@ -25,7 +32,7 @@ const openaiSchema = z.object({ output: z.array(z.object({ content: z.array(z.ob
 
 /** Single JSON interface; domain-specific mock data and audit metadata are bound separately. */
 export async function generateJson<Schema extends z.ZodTypeAny>(input: { system: string; prompt: string; schema: Schema }, context: Context): Promise<z.output<Schema>> {
-  const configuration = llmConfiguration(context.env);
+  const configuration = llmConfiguration(context.env, context.purpose);
   const started = Date.now();
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
@@ -49,7 +56,7 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
             method: 'POST', signal: AbortSignal.timeout(60_000),
             headers: anthropic ? { 'content-type': 'application/json', 'x-api-key': configuration.key!, 'anthropic-version': '2023-06-01' } : { 'content-type': 'application/json', Authorization: `Bearer ${configuration.key}` },
             body: JSON.stringify(anthropic ? {
-              model: configuration.model, max_tokens: 6000, system: input.system,
+              model: configuration.model, max_tokens: 8000, system: input.system,
               messages: [{ role: 'user', content: input.prompt + feedback }],
             } : { model: configuration.model, instructions: input.system, input: input.prompt + feedback, text: { format: { type: 'json_object' } }, max_output_tokens: 6000 }),
           });
@@ -59,7 +66,9 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
           inputTokens = (inputTokens ?? 0) + (parsed.usage?.input_tokens ?? 0);
           outputTokens = (outputTokens ?? 0) + (parsed.usage?.output_tokens ?? 0);
           const text = 'content' in parsed ? parsed.content.filter(block => block.type === 'text').map(block => block.text ?? '').join('') : parsed.output.flatMap(item => item.content ?? []).filter(block => block.type === 'output_text').map(block => block.text ?? '').join('');
-          raw = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
+          const actualModel = (payload as { model?: unknown }).model;
+          if (typeof actualModel === 'string') configuration.model = actualModel;
+          raw = JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/gi, ''));
         }
         const result = input.schema.parse(raw);
         success = true;
@@ -77,7 +86,7 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
     await context.db.aiRun.create({ data: {
       provider: configuration.provider, model: configuration.model, purpose: context.purpose,
       companyId: context.companyId, durationMs: Date.now() - started, inputTokens, outputTokens,
-      success, error: success ? null : errorCode,
+      success, error: success ? configuration.fallback ?? null : [configuration.fallback, errorCode].filter(Boolean).join(':'),
     } });
   }
 }
