@@ -269,8 +269,8 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     expect(email).toMatchObject({ to: 'compras@cliente-email.test', approvedBy: 'comercial-trygestion@test.local', externalRef: `task:${task.id}`, oportunidadId: mock.state.opportunities[0].id });
     expect(String(email.text)).toContain('BAJA'); expect(String(email.unsubscribeUrl)).toMatch(/^http:\/\/localhost:3000\/baja\//);
     expect(String(email.html)).not.toContain('<script');
-    const remitente = await db.user.findUniqueOrThrow({ where: { id: userId } });
-    expect(email.firmante).toBe(remitente.name?.trim() || undefined);
+    expect(email.firmante).toBe('Andrés Martínez');
+    expect(email.cargo).toBe('Gerente');
     // Firma editable: lo que se escribe en el formulario se envía y queda guardado para el siguiente email.
     const task2 = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Email día 4', scriptId: script.id } });
     await sendTaskEmail(db, { ...input, taskId: task2.id, firmaNombre: 'Andrés Martínez', firmaCargo: 'Gerente' }, { env, client: client() });
@@ -293,6 +293,21 @@ describe.runIf(enabled)('integración con trygestión (mock local con el comport
     await enqueueCompany(db, local.id); await drain(local.id);
     expect(mock.state.companies.some(row => row.nombre === local.name)).toBe(false);
     expect(await db.syncOutbox.findFirst({ where: { entityId: local.id } })).toMatchObject({ status: 'SKIPPED' });
+  });
+
+  it('resuelve el saludo y sustituye la firma y el pie antiguos por una sola firma y una BAJA', async () => {
+    const local = await company({ email: 'marta@cliente-email.test' });
+    await db.contact.create({ data: { companyId: local.id, fullName: 'Marta López', email: local.email } });
+    const script = await db.script.create({ data: { companyId: local.id, author: 'test', content: {}, status: 'APPROVED' } });
+    const task = await db.task.create({ data: { companyId: local.id, type: 'EMAIL', title: 'Email legal', scriptId: script.id } });
+    await sendTaskEmail(db, { taskId: task.id, userId, approved: true, to: local.email, subject: 'El trabajo diario', body: 'Buenos días, [NOMBRE]:\n\n¿Hablamos de los lotes?\n\nUn saludo,\n\nFirma antigua\ntry! company · [TELÉFONO] · [WEB]\nSi prefiere no recibir mensajes responda BAJA.', firmaNombre: 'Ana Comercial', firmaCargo: 'Directora Comercial' }, { env, client: client() });
+    const email = mock.state.emails.at(-1)!;
+    expect(String(email.text)).toMatch(/^Buenos días, Marta:/);
+    expect(String(email.text).match(/\bBAJA\b/g)).toHaveLength(1);
+    expect(String(email.text)).not.toMatch(/Firma antigua|\[NOMBRE\]|\[TELÉFONO\]|\[WEB\]/);
+    expect(email).toMatchObject({ firmante: 'Ana Comercial', cargo: 'Directora Comercial' });
+    expect(String(email.text)).toContain('try! company');
+    expect(String(email.unsubscribeUrl)).toContain('/baja/');
   });
 
   it('enviar una roja exige confirmación también en servidor y audita la excepción', async () => {

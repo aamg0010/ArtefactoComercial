@@ -18,6 +18,8 @@ export const e2eEnvironment = {
   SEED_ADMIN_PASSWORD: 'e2e-admin-only-password',
   SEED_SALES_PASSWORD: 'e2e-sales-only-password',
   LLM_PROVIDER: 'mock',
+  SCRIPT_LLM_PROVIDER: 'mock',
+  SCRIPT_LLM_MODEL: '',
   LLM_MODEL: '',
   ANTHROPIC_API_KEY: '',
   OPENAI_API_KEY: '',

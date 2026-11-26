@@ -1,3 +1,4 @@
+import { companyScriptContext, scriptPrompt } from './script-context';
 import { enqueueCompany } from '../trygestion/outbox';
 import { readFile } from 'node:fs/promises';
 import type { PrismaClient } from '@prisma/client';
@@ -46,23 +47,22 @@ export async function applySuggestedPriority(db: PrismaClient, companyId: string
 }
 
 export async function generateCompanyScript(db: PrismaClient, companyId: string, requestedProduct?: string) {
-  const company = await db.company.findUniqueOrThrow({ where: { id: companyId } });
+  const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, include: { evidence: true, contacts: true, activities: { where: { type: { in: ['CALL', 'MEETING', 'NOTE'] } }, orderBy: { createdAt: 'desc' }, take: 5 } } });
+  const existingDraft = await db.script.findFirst({ where: { companyId, status: 'BORRADOR' }, orderBy: { version: 'desc' } });
   if (company.acceptanceStatus !== 'ACCEPTED') throw new Error('La empresa está pendiente de aceptar o descartada.');
+  if (existingDraft) return existingDraft;
   const report = await db.researchReport.findFirstOrThrow({ where: { companyId, origin: 'AI' }, orderBy: { version: 'desc' } });
   const research = researchShape.parse(report.data);
   const product = await db.product.findUniqueOrThrow({ where: { line: requestedProduct || research.recommendations[0].line } });
   const templates = await db.template.findMany({ orderBy: { name: 'asc' } });
   if (templates.length === 0) throw new Error('Ejecuta el seed para cargar las plantillas.');
   const file = JSON.parse(await readFile('data/guiones.json', 'utf8')) as { cadencia_estandar: StandardStep[] };
-  const example = mockScript(company.name, product.line, research, file.cadencia_estandar);
-  const catalog = await db.product.findMany({ select: { line: true } });
-  // Nombres propios que siempre se pueden usar: nuestra marca, nuestros productos y la propia empresa.
-  const allowedNames = ['Try Business Solutions', 'Try Company', 'try! company', 'trygestión', 'Bajo Aragón', company.name, ...catalog.map(item => item.line)];
-  const script = await generateJson({
-    system: `${researchInstructions}\nGenera un guion comercial BORRADOR en español adaptado al país y rol. Usa las cinco plantillas sólo como estructura, nunca copies sus nombres, cifras, años, contactos o hechos de otras empresas. No escribas nombres de personas (ni del comercial ni de nadie): preséntate como "el equipo de try! company". Los únicos nombres propios permitidos son los de la ficha y estos: ${allowedNames.join(', ')}. No pongas cifras ni años que no estén en la ficha (tampoco duraciones como "15 minutos": di "una conversación breve"). El cliente compra productividad, rentabilidad, menos riesgo y capacidad de decisión. No afirmes hipótesis como hechos: plantéalas como preguntas. Usa exactamente la cadencia estándar. Cada email incluye try! company, motivo, BAJA, [TELÉFONO] y [WEB]. No insertes URLs o emails.
-Calidad: personaliza llamada y emails con al menos dos datos concretos de la ficha (actividad, señales o dolores) dichos con naturalidad. Cada email es distinto (primer contacto, aporte de valor, último seguimiento), breve (80-140 palabras), cercano y profesional, de usted; despierta curiosidad por lo que hacemos y termina con una pregunta concreta para tener una conversación breve. Nunca escribas al cliente frases internas como "hipótesis", "no hemos verificado", "borrador" o "revisión humana". Termina cada cuerpo con el pie: "try! company · [TELÉFONO] · [WEB]" y "Si prefiere no recibir más comunicaciones nuestras, responda BAJA."`,
-    prompt: JSON.stringify({ pais: company.country, empresa: company.name, ficha: research, producto: product.line, queOfreceElProducto: product.description, plantillas: templates.map(item => item.content), cadencia: file.cadencia_estandar, formatoJSON: scriptSkeleton(example) }),
-    schema: generatedScriptSchema(research.sources, product.line, file.cadencia_estandar, allowedNames),
+  const context = companyScriptContext(company, research);
+  const enriched = { ...research, sources: context.evidence };
+  const example = mockScript(company.name, product.line, enriched, file.cadencia_estandar);
+  const input = scriptPrompt(context, research, product, templates.map(item => item.content), file.cadencia_estandar, example);
+  const script = await generateJson({ ...input,
+    schema: generatedScriptSchema(context.evidence, product.line, file.cadencia_estandar, [...context.allowedNames, product.line], { companyName: company.name, personNames: context.personNames, companyEvidence: context.evidence.filter(e => !e.id.startsWith('activity-')) }),
   }, { db, companyId, purpose: 'script', mockResponse: example });
   return db.$transaction(async tx => {
     const latest = await tx.script.aggregate({ where: { companyId }, _max: { version: true } });
@@ -90,5 +90,35 @@ export async function approveCompanyScript(db: PrismaClient, scriptId: string, u
       if (!suppressed) await tx.task.create({ data: { companyId: script.companyId, companyCadenceId: companyCadence.id, cadenceStepId: cadenceStep.id, scriptId, assigneeId: userId ?? script.company.ownerId, type, title: step.accion, dueAt: new Date(startDate.getTime() + (step.dia - 1) * 86_400_000) } });
     }
     await tx.auditLog.create({ data: { userId, entityType: 'Script', entityId: scriptId, action: 'APPROVE_SCRIPT', metadata: { suppressed, companyCadenceId: companyCadence.id } } });
+  });
+}
+
+/** Confirmación separada de la generación: conserva las tareas, fechas y cadencias existentes. */
+export async function updatePendingScriptEmails(db: PrismaClient, companyId: string, scriptId: string, userId: string) {
+  return db.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR UPDATE`;
+    const company = await tx.company.findUniqueOrThrow({ where: { id: companyId } });
+    if (company.acceptanceStatus !== 'ACCEPTED' || await isSuppressed(tx, companyId)) throw new Error('Empresa no disponible.');
+    const script = await tx.script.findFirstOrThrow({ where: { id: scriptId, companyId, status: 'BORRADOR' } });
+    const latest = await tx.script.findFirstOrThrow({ where: { companyId }, orderBy: { version: 'desc' } });
+    if (latest.id !== script.id) throw new Error('Revisa la versión más reciente.');
+    const content = generatedScriptShape.parse(script.content);
+    const tasks = await tx.task.findMany({ where: { companyId, type: 'EMAIL', status: 'PENDING', script: { status: 'APPROVED' } }, include: { cadenceStep: true, script: true } });
+    const changed: { taskId: string; previousScriptId: string | null; emailIndex: number }[] = [];
+    for (const task of tasks.sort((a, b) => a.id.localeCompare(b.id))) {
+      // Mismo cerrojo que el envío: no se cambia un intento en curso, fallido o ya enviado.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`email:${task.id}`}))`;
+      if (await tx.emailDispatch.findUnique({ where: { taskId: task.id } })) continue;
+      const old = generatedScriptShape.safeParse(task.script?.content);
+      const day = task.scriptEmailIndex !== null ? (old.success ? old.data.emails[task.scriptEmailIndex]?.dia : undefined) : task.cadenceStep?.dayOffset;
+      const index = content.emails.findIndex(e => e.dia === day);
+      if (index < 0) continue;
+      const updated = await tx.task.updateMany({ where: { id: task.id, status: 'PENDING', scriptId: task.scriptId }, data: { scriptId, scriptEmailIndex: index } });
+      if (updated.count) changed.push({ taskId: task.id, previousScriptId: task.scriptId, emailIndex: index });
+    }
+    if (!changed.length) throw new Error('No quedan emails pendientes sin intento de envío compatibles.');
+    await tx.script.update({ where: { id: scriptId }, data: { status: 'APPROVED', approvedAt: new Date(), approvedBy: userId } });
+    await tx.auditLog.create({ data: { userId, entityType: 'Script', entityId: scriptId, action: 'UPDATE_PENDING_EMAIL_TEXTS', metadata: { companyId, tasks: changed } } });
+    return changed.length;
   });
 }

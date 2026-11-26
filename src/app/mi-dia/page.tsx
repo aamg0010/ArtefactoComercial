@@ -9,7 +9,7 @@ import { trygestionConfiguration } from '@/lib/trygestion/client';
 import { auth } from '@/auth';
 import { SubmitButton } from '../submit-button';
 import { filtersSchema, filterTasks, productLines, taskTypeLabels, validDay } from '@/lib/mi-dia/filters';
-import { safeId, taskEmail } from '@/lib/mi-dia/script-email';
+import { safeId, taskEmail, defaultSignature } from '@/lib/mi-dia/script-email';
 import { TaskFocus } from './task-focus';
 import { loadGuide } from '@/lib/guia/service';
 import { DayGuide } from './day-guide';
@@ -40,7 +40,7 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
   const scope = { userId: session.user.id, role: session.user.role ?? 'SALES', team: searchParams.equipo !== '0' };
   const guide = await loadGuide(prisma, scope, new Date(), day);
   const me = session?.user?.id ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, signatureName: true, signatureTitle: true } }) : null;
-  const firma = { nombre: me?.signatureName ?? me?.name ?? '', cargo: me?.signatureTitle ?? '' };
+  const firma = defaultSignature(me);
   const limite = new Date(`${day}T23:59:59.999Z`); limite.setUTCDate(limite.getUTCDate() + 7);
   const include = { company: { include: { contacts: true, opportunities: { include: { product: true } } } }, script: true, cadenceStep: true } as const;
   const candidates = (await prisma.task.findMany({ where: { status: 'PENDING', company: { acceptanceStatus: 'ACCEPTED' }, OR: [{ dueAt: { lte: limite } }, { dueAt: null }] }, include })).filter(task => (companyInScope(task.company, scope) || task.assigneeId === scope.userId) && taskInScope(task, scope));
@@ -67,7 +67,7 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
       <h3 className="font-semibold"><Link className="font-medium hover:underline" href={`/empresas/${task.companyId}`}><span className={`badge badge-${(task.company.priority ?? 'C').toLowerCase()} mr-2 align-middle`}>{task.company.priority ?? 'Sin prioridad'}</span>{task.company.name}</Link></h3>
       {task.result && <p className="whitespace-pre-wrap text-sm text-slate-600">{task.result}</p>}<p>{task.title}{task.dueAt && taskDate(task.dueAt)! > day && <span className="text-slate-500"> · para el {taskDate(task.dueAt)!.split('-').reverse().join('/')}</span>}</p>
       {task.script && <details className="mt-2"><summary>Guion y emails</summary><ScriptView content={task.script.content as Content}/></details>}
-      {canEdit && task.type === 'EMAIL' && task.script?.status === 'APPROVED' && email && (enabled || selected) && <EmailApproval status={statuses.get(task.companyId)!} taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email} firma={firma} open={selected} enabled={enabled}/>}
+      {canEdit && task.type === 'EMAIL' && task.script?.status === 'APPROVED' && email && (enabled || selected) && <EmailApproval contacts={task.company.contacts} status={statuses.get(task.companyId)!} taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email} firma={firma} open={selected} enabled={enabled}/>}
       {canEdit && <form action={recordTaskResult} className="mt-3 flex flex-wrap gap-2"><input type="hidden" name="taskId" value={task.id}/><label>Notas<textarea name="notes" maxLength={2000}/></label><label>Con quién se habló<input name="interlocutor" maxLength={200}/></label><fieldset className="w-full"><legend>Reunión: fecha y hora (zona del calendario)</legend><label>Fecha<input type="date" name="meetingDate"/></label><label>Hora<input type="time" name="meetingTime"/></label><label>Ubicación<input name="meetingLocation"/></label></fieldset>{results.map(result => <SubmitButton key={result} name="result" value={result} pendingText="Guardando…">{result}</SubmitButton>)}</form>}
     </article>;
   })}</div></section>;

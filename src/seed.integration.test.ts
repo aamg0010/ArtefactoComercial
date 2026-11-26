@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { investigateCompany, generateCompanyScript, approveCompanyScript, applySuggestedPriority } from './lib/research/service';
+import { investigateCompany, generateCompanyScript, approveCompanyScript, applySuggestedPriority, updatePendingScriptEmails } from './lib/research/service';
 import { setCompanyCadenceStatus } from './lib/cadence';
 import { isSafeTestDatabase } from './lib/test-database';
 import { completeTask } from './lib/tasks';
@@ -307,6 +307,7 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     expect((await db.company.findUniqueOrThrow({ where: { id: company.id } })).priority).toBe(second.score!.suggestedPriority);
     const draft = await generateCompanyScript(db, company.id);
     expect(draft).toMatchObject({ author: 'IA', status: 'BORRADOR', version: 1 });
+    expect((await generateCompanyScript(db, company.id)).id).toBe(draft.id);
     expect(await db.task.count({ where: { companyId: company.id } })).toBe(0);
     expect(await db.companyCadence.count({ where: { companyId: company.id } })).toBe(0);
     await approveCompanyScript(db, draft.id, actor.id);
@@ -316,6 +317,18 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     expect(await db.task.count({ where: { scriptId: draft.id } })).toBe(6);
     expect((await db.script.findUniqueOrThrow({ where: { id: draft.id } })).status).toBe('APPROVED');
     expect(await db.aiRun.count({ where: { companyId: company.id, provider: 'mock', success: true } })).toBe(3);
+    const regenerated = await generateCompanyScript(db, company.id);
+    expect(regenerated).toMatchObject({ status: 'BORRADOR', version: 2 });
+    const emails = await db.task.findMany({ where: { companyId: company.id, type: 'EMAIL' }, orderBy: { dueAt: 'asc' } });
+    await db.emailDispatch.create({ data: { taskId: emails[0].id, companyId: company.id, status: 'SENT', approvedBy: actor.email, contentHash: 'test', sentAt: new Date() } });
+    await db.emailDispatch.create({ data: { taskId: emails[1].id, companyId: company.id, status: 'PROCESSING', approvedBy: actor.email, contentHash: 'test' } });
+    const before = await db.task.findMany({ where: { companyId: company.id }, orderBy: { id: 'asc' } });
+    expect(await updatePendingScriptEmails(db, company.id, regenerated.id, actor.id)).toBe(1);
+    const after = await db.task.findMany({ where: { companyId: company.id }, orderBy: { id: 'asc' } });
+    expect(after.map(t => [t.id, t.dueAt, t.companyCadenceId, t.cadenceStepId, t.status])).toEqual(before.map(t => [t.id, t.dueAt, t.companyCadenceId, t.cadenceStepId, t.status]));
+    expect(after.filter(t => t.scriptId === regenerated.id).map(t => t.id)).toEqual([emails[2].id]);
+    expect(await db.auditLog.findFirst({ where: { entityId: regenerated.id, action: 'UPDATE_PENDING_EMAIL_TEXTS' } })).toMatchObject({ userId: actor.id });
+    expect(await db.companyCadence.count({ where: { companyId: company.id } })).toBe(1);
   });
 
   it('una empresa suprimida no genera el siguiente paso al registrar un resultado', async () => {

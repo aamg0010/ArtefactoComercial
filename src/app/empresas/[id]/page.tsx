@@ -1,4 +1,5 @@
 import { DeleteCompany } from './delete-company';
+import { lacksWebsiteResearch } from '@/lib/research/script-context';
 import { ContactHistory } from './contact-history';
 import { loadContactStatuses } from '@/lib/contact-status-service';
 import { ContactBadge, ContactWarning } from '@/app/contact-status';
@@ -59,6 +60,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   const latest = company.researchReports.find(report => report.origin === 'AI');
   const score = latest?.score;
   const research = researchShape.safeParse(latest?.data);
+  const pendingEmails = company.scripts.some(s => s.status === 'APPROVED') ? await prisma.task.count({ where: { companyId: company.id, type: 'EMAIL', status: 'PENDING', script: { status: 'APPROVED' }, id: { notIn: (await prisma.emailDispatch.findMany({ where: { companyId: company.id }, select: { taskId: true } })).map(d => d.taskId) } } }) : 0;
   const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><SubmitButton name="action" value={action} disabled={company.acceptanceStatus !== 'ACCEPTED'} {...pendingFor[action]}>{label}</SubmitButton></form>;
   return <main className="mx-auto max-w-5xl space-y-5 p-3 [overflow-wrap:anywhere] sm:p-5">
     <h1 className="page-title break-words">{company.name}</h1>
@@ -107,12 +109,17 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     </section>
     <section aria-label="Guiones" className="card p-4">
       <h2 className="text-lg font-semibold">Guiones</h2>
+      <p className="text-sm text-slate-600">Al enviar desde Mi día se añaden la firma con teléfono y web y el pie de BAJA.</p>
+      {(company.website || company.normalizedDomain) && (!research.success || lacksWebsiteResearch(company.website ?? company.normalizedDomain, research.data)) && <div className="my-3 rounded border border-amber-300 p-3"><p>Ficha sin datos de su web: actualiza la investigación para un guion más personalizado</p>{canEdit && actionForm('research', 'Actualizar investigación')}</div>}
+      {pendingEmails > 0 && <p>Actualizar textos de los emails pendientes: regenere el guion, revise el borrador y confirme debajo la sustitución. Se conservan las fechas y la cadencia.</p>}
       {company.acceptanceStatus === 'ACCEPTED' && research.success && !company.scripts.some(script => script.status === 'APPROVED') && <form action={companyAction}>
         <input type="hidden" name="companyId" value={company.id}/><label>Línea de producto principal<select name="product" defaultValue={research.data.recommendations[0].line}>{products.map(product => <option key={product.id} value={product.line}>{product.line}</option>)}</select></label>
-        <ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} name="action" value="generate" {...pendingFor.generate}>Generar guion</SubmitButton>
+        <ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} name="action" value="generate" {...pendingFor.generate}>{company.scripts.length ? 'Regenerar guion' : 'Generar guion'}</SubmitButton>
+        {pendingEmails > 0 && !company.scripts.some(s => s.status === 'BORRADOR') && <SubmitButton className="btn-secondary ml-2" disabled={contact.color === 'gray'} name="action" value="generate" {...pendingFor.generate}>Actualizar textos de los emails pendientes</SubmitButton>}
       </form>}
       {company.scripts.map(script => <article className="mt-4 border-t pt-3" key={script.id}>
         <h3 className="font-semibold">Guion versión {script.version} · {script.author} · {script.status === 'BORRADOR' ? 'BORRADOR' : 'Aprobado'}</h3>
+        {canEdit && pendingEmails > 0 && script.status === 'BORRADOR' && script.id === company.scripts[0].id && <form action={companyAction} className="my-3 border p-3"><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><label className="block"><input type="checkbox" name="confirmUpdate" required/> He revisado este borrador y confirmo sustituir solo los textos de los emails pendientes sin intento de envío.</label><ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} name="action" value="update-emails" pendingText="Actualizando…">Actualizar textos de los emails pendientes</SubmitButton></form>}
         <ScriptView content={script.content as GeneratedScript} emailAction={index => suppressed ? <p>La empresa ha solicitado la baja y no puede recibir emails.</p> : script.status === 'BORRADOR' ? <p>Aprueba el guion para poder enviar sus emails</p> : company.acceptanceStatus !== 'ACCEPTED' ? <p>Acepta la empresa para poder enviar sus emails.</p> : canEdit ? <form action={prepareEmail} className="mt-2"><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><input type="hidden" name="emailIndex" value={index}/><ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} className="btn-secondary" pendingText="Preparando…">Enviar desde Mi día</SubmitButton></form> : null}/>
         {script.status === 'BORRADOR' && script.version === company.scripts[0].version && <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><SubmitButton name="action" value="approve" {...pendingFor.approve}>Aprobar guion</SubmitButton></form>}
       </article>)}

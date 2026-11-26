@@ -3,7 +3,7 @@ import { ContactBarrierError } from '@/lib/contact-status';
 import { enforceContactBarrier } from '@/lib/contact-status-service';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { investigateCompany, generateCompanyScript, approveCompanyScript, applySuggestedPriority } from '@/lib/research/service';
+import { investigateCompany, generateCompanyScript, approveCompanyScript, applySuggestedPriority, updatePendingScriptEmails } from '@/lib/research/service';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ export async function companyAction(form: FormData) {
   const session = await auth();
   if (!session?.user?.id || session.user.role === 'DIRECTOR') throw new Error('No autorizado');
   const companyId = z.string().trim().min(1).max(191).regex(/^[\w-]+$/).parse(form.get('companyId'));
-  const action = z.enum(['research', 'priority', 'generate', 'approve', 'accept', 'discard']).parse(form.get('action'));
+  const action = z.enum(['research', 'priority', 'generate', 'approve', 'accept', 'discard', 'update-emails']).parse(form.get('action'));
   let targetId = companyId;
   let failed = false;
   let errorCode = '1';
@@ -23,6 +23,11 @@ export async function companyAction(form: FormData) {
     if (action === 'research') await investigateCompany(prisma, companyId);
     if (action === 'priority') await applySuggestedPriority(prisma, companyId, session.user.id);
     if (action === 'generate') { await enforceContactBarrier(prisma, companyId, form.get('contactConfirmed') === 'on', session.user.id, 'GENERATE_SCRIPT'); await generateCompanyScript(prisma, companyId, z.string().min(1).parse(form.get('product'))); }
+    if (action === 'update-emails') {
+      if (form.get('confirmUpdate') !== 'on') throw new Error('Confirma la sustitución tras revisar el borrador.');
+      await enforceContactBarrier(prisma, companyId, form.get('contactConfirmed') === 'on', session.user.id, 'UPDATE_PENDING_EMAILS');
+      await updatePendingScriptEmails(prisma, companyId, z.string().trim().min(1).max(191).regex(/^[\w-]+$/).parse(form.get('scriptId')), session.user.id);
+    }
     if (action === 'approve') {
       const scriptId = z.string().trim().min(1).max(191).regex(/^[\w-]+$/).parse(form.get('scriptId'));
       await prisma.script.findFirstOrThrow({ where: { id: scriptId, companyId } });
