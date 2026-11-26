@@ -1,3 +1,6 @@
+import { companyJobState, isCompanyJobRunning } from '@/lib/jobs/company-jobs';
+import { isReusableDraft } from '@/lib/research/scripts';
+import { JobRefresh } from './job-refresh';
 import { DeleteCompany } from './delete-company';
 import { lacksWebsiteResearch } from '@/lib/research/script-context';
 import { ContactHistory } from './contact-history';
@@ -21,8 +24,8 @@ import { loadGuide } from '@/lib/guia/service';
 import Link from 'next/link';
 
 const pendingFor: Record<string, { pendingText: string; notice?: string }> = {
-  research: { pendingText: 'Investigando…', notice: 'Investigando la empresa (su web y fuentes públicas). Puede tardar unos minutos: no cierres ni recargues la página.' },
-  generate: { pendingText: 'Generando guion…', notice: 'La IA está escribiendo el guion de llamada y los emails. Puede tardar hasta un par de minutos: no cierres ni recargues la página.' },
+  research: { pendingText: 'Investigando…', notice: 'Iniciando investigación en segundo plano.' },
+  generate: { pendingText: 'Generando guion…', notice: 'Iniciando guion en segundo plano.' },
   approve: { pendingText: 'Aprobando…', notice: 'Aprobando el guion y creando las tareas de la cadencia.' },
   priority: { pendingText: 'Aplicando…' },
 };
@@ -61,8 +64,21 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   const score = latest?.score;
   const research = researchShape.safeParse(latest?.data);
   const pendingEmails = company.scripts.some(s => s.status === 'APPROVED') ? await prisma.task.count({ where: { companyId: company.id, type: 'EMAIL', status: 'PENDING', script: { status: 'APPROVED' }, id: { notIn: (await prisma.emailDispatch.findMany({ where: { companyId: company.id }, select: { taskId: true } })).map(d => d.taskId) } } }) : 0;
-  const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><SubmitButton name="action" value={action} disabled={company.acceptanceStatus !== 'ACCEPTED'} {...pendingFor[action]}>{label}</SubmitButton></form>;
+  const reusableDraft = company.scripts[0] && isReusableDraft(company.scripts[0]);
+  const [scriptResult, researchResult] = await Promise.all([
+    prisma.auditLog.findFirst({ where: { entityType: 'Company', entityId: company.id, action: { in: ['SCRIPT_GENERATED', 'SCRIPT_GENERATION_FAILED'] } }, orderBy: { createdAt: 'desc' }, select: { action: true, createdAt: true } }),
+    prisma.auditLog.findFirst({ where: { entityType: 'Company', entityId: company.id, action: { in: ['RESEARCH_DONE', 'RESEARCH_FAILED'] } }, orderBy: { createdAt: 'desc' }, select: { action: true, createdAt: true } }),
+  ]);
+  const scriptState = companyJobState('script', isCompanyJobRunning('script', company.id), company.scripts[0]?.createdAt, scriptResult);
+  const researchState = companyJobState('research', isCompanyJobRunning('research', company.id), latest?.createdAt, researchResult);
+  const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><SubmitButton name="action" value={action} disabled={!canEdit || company.acceptanceStatus !== 'ACCEPTED' || (action === 'research' && researchState === 'running')} {...pendingFor[action]}>{label}</SubmitButton></form>;
   return <main className="mx-auto max-w-5xl space-y-5 p-3 [overflow-wrap:anywhere] sm:p-5">
+    <JobRefresh active={scriptState === 'running' || researchState === 'running'}/>
+    {scriptState === 'running' && <p role="status">Generando guion con IA… suele tardar uno o dos minutos. Puedes seguir trabajando; esta página se actualiza sola.</p>}
+    {researchState === 'running' && <p role="status">Investigando… suele tardar uno o dos minutos. Puedes seguir trabajando; esta página se actualiza sola.</p>}
+    {scriptState === 'ready' && <p role="status">Guion nuevo listo: revísalo y apruébalo.</p>}
+    {researchState === 'ready' && <p role="status">Investigación lista.</p>}
+    {(scriptState === 'failed' || researchState === 'failed') && <p role="alert">No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.</p>}
     <h1 className="page-title break-words">{company.name}</h1>
     <section aria-label="Estado de contacto" className="card p-4"><ContactBadge status={contact} detail/></section>
     {notices.length > 0 && <section aria-label="Avisos de seguimiento" className="rounded-xl border border-amber-200 bg-amber-50 p-4"><h2 className="font-semibold">Guía del día</h2><ul>{notices.map(item => <li key={`${item.id}-${item.title}`}>{item.title} · {item.reason}</li>)}</ul><Link className="underline" href="/mi-dia">Gestionar en Mi día</Link></section>}
@@ -78,7 +94,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     <ContactHistory companyId={company.id} medium={searchParams.medio} limit={searchParams.limite}/>
     <PlacesView companyId={company.id} country={company.country}/>
     {searchParams.error && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">{errorMessages[searchParams.error] ?? 'No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.'}</p>}
-    {(searchParams.done || searchParams.ok) && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-emerald-900">{okMessages[searchParams.ok ?? ''] ?? 'Operación completada.'}</p>}
+    {(searchParams.done || (searchParams.ok && !['generando', 'investigando'].includes(searchParams.ok))) && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-emerald-900">{okMessages[searchParams.ok ?? ''] ?? 'Operación completada.'}</p>}
     <section aria-label="Datos de empresa" className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Datos de empresa</h2>
@@ -112,17 +128,17 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
       <p className="text-sm text-slate-600">Al enviar desde Mi día se añaden la firma con teléfono y web y el pie de BAJA.</p>
       {(company.website || company.normalizedDomain) && (!research.success || lacksWebsiteResearch(company.website ?? company.normalizedDomain, research.data)) && <div className="my-3 rounded border border-amber-300 p-3"><p>Ficha sin datos de su web: actualiza la investigación para un guion más personalizado</p>{canEdit && actionForm('research', 'Actualizar investigación')}</div>}
       {pendingEmails > 0 && <p>Actualizar textos de los emails pendientes: regenere el guion, revise el borrador y confirme debajo la sustitución. Se conservan las fechas y la cadencia.</p>}
-      {company.acceptanceStatus === 'ACCEPTED' && research.success && !company.scripts.some(script => script.status === 'APPROVED') && <form action={companyAction}>
+      {canEdit && company.acceptanceStatus === 'ACCEPTED' && research.success && <form action={companyAction}>
         <input type="hidden" name="companyId" value={company.id}/><label>Línea de producto principal<select name="product" defaultValue={research.data.recommendations[0].line}>{products.map(product => <option key={product.id} value={product.line}>{product.line}</option>)}</select></label>
-        <ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} name="action" value="generate" {...pendingFor.generate}>{company.scripts.length ? 'Regenerar guion' : 'Generar guion'}</SubmitButton>
-        {pendingEmails > 0 && !company.scripts.some(s => s.status === 'BORRADOR') && <SubmitButton className="btn-secondary ml-2" disabled={contact.color === 'gray'} name="action" value="generate" {...pendingFor.generate}>Actualizar textos de los emails pendientes</SubmitButton>}
+        <ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray' || scriptState === 'running' || reusableDraft} name="action" value="generate" {...pendingFor.generate}>{reusableDraft ? 'Ya hay un borrador nuevo para revisar' : company.scripts.length ? 'Regenerar guion' : 'Generar guion'}</SubmitButton>
+
       </form>}
-      {company.scripts.map(script => <article className="mt-4 border-t pt-3" key={script.id}>
+      {company.scripts.map(script => <details open={(script.id === company.scripts[0].id && isReusableDraft(script)) || script.status === 'APPROVED'} key={script.id}><summary>Guion versión {script.version} · {script.status}</summary><article className="mt-4 border-t pt-3">
         <h3 className="font-semibold">Guion versión {script.version} · {script.author} · {script.status === 'BORRADOR' ? 'BORRADOR' : 'Aprobado'}</h3>
-        {canEdit && pendingEmails > 0 && script.status === 'BORRADOR' && script.id === company.scripts[0].id && <form action={companyAction} className="my-3 border p-3"><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><label className="block"><input type="checkbox" name="confirmUpdate" required/> He revisado este borrador y confirmo sustituir solo los textos de los emails pendientes sin intento de envío.</label><ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} name="action" value="update-emails" pendingText="Actualizando…">Actualizar textos de los emails pendientes</SubmitButton></form>}
+        {canEdit && pendingEmails > 0 && isReusableDraft(script) && script.id === company.scripts[0].id && <form action={companyAction} className="my-3 border p-3"><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><label className="block"><input type="checkbox" name="confirmUpdate" required/> He revisado este borrador y confirmo sustituir solo los textos de los emails pendientes sin intento de envío.</label><ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} name="action" value="update-emails" pendingText="Actualizando…">Actualizar textos de los emails pendientes</SubmitButton></form>}
         <ScriptView content={script.content as GeneratedScript} emailAction={index => suppressed ? <p>La empresa ha solicitado la baja y no puede recibir emails.</p> : script.status === 'BORRADOR' ? <p>Aprueba el guion para poder enviar sus emails</p> : company.acceptanceStatus !== 'ACCEPTED' ? <p>Acepta la empresa para poder enviar sus emails.</p> : canEdit ? <form action={prepareEmail} className="mt-2"><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><input type="hidden" name="emailIndex" value={index}/><ContactWarning status={contact}/><SubmitButton disabled={contact.color === 'gray'} className="btn-secondary" pendingText="Preparando…">Enviar desde Mi día</SubmitButton></form> : null}/>
-        {script.status === 'BORRADOR' && script.version === company.scripts[0].version && <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><SubmitButton name="action" value="approve" {...pendingFor.approve}>Aprobar guion</SubmitButton></form>}
-      </article>)}
+        {canEdit && script.status === 'BORRADOR' && script.version === company.scripts[0].version && <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><input type="hidden" name="scriptId" value={script.id}/><SubmitButton name="action" value="approve" {...pendingFor.approve}>Aprobar guion</SubmitButton></form>}
+      </article></details>)}
     </section>
     <section aria-label="Datos confirmados" className="card p-4"><h2 className="font-semibold">Datos confirmados y procedencia</h2>{company.evidence.map(item => {
       const data = item.data as { confirmed?: Record<string, string>; provenance?: Record<string, { kind: string; url?: string; date: string }> };

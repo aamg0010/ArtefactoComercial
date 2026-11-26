@@ -1,4 +1,5 @@
 import { companyScriptContext, scriptPrompt } from './script-context';
+import { isReusableDraft } from './scripts';
 import { enqueueCompany } from '../trygestion/outbox';
 import { readFile } from 'node:fs/promises';
 import type { PrismaClient } from '@prisma/client';
@@ -13,7 +14,7 @@ import { calculateScore, defaultWeights } from './scoring';
 import { generatedScriptSchema, generatedScriptShape, mockScript, scriptSkeleton, type StandardStep } from './scripts';
 
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-export async function investigateCompany(db: PrismaClient, companyId: string) {
+export async function investigateCompany(db: PrismaClient, companyId: string, signal?: AbortSignal) {
   const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, include: { contacts: true, opportunities: { include: { product: true } } } });
   if (company.acceptanceStatus !== 'ACCEPTED') throw new Error('Acepta la empresa antes de investigarla.');
   const catalog = await db.product.findMany({ where: { active: true } });
@@ -25,14 +26,18 @@ export async function investigateCompany(db: PrismaClient, companyId: string) {
     system: researchInstructions,
     prompt: JSON.stringify({ tarea: 'Investigación comercial con fuentes', sources, catalogo: catalog.map(item => ({ linea: item.line, queOfrece: item.description })), webNote: web.note, formatoJSON: { ...example, sources: sources.map(source => ({ id: source.id, url: source.url, date: source.date })) } }),
     schema: researchSchema(sources, catalog.map(item => item.line)),
-  }, { db, companyId, purpose: 'research', mockResponse: example });
+  }, { db, companyId, signal, purpose: 'research', mockResponse: example });
   const weights = await db.scoringWeights.findUnique({ where: { id: 'default' } }) ?? defaultWeights;
   const score = calculateScore(report, { comarca: company.comarca, hasContact: hasDirectContact(company) || company.contacts.some(hasDirectContact) }, weights);
+  signal?.throwIfAborted();
   return db.$transaction(async tx => {
+    signal?.throwIfAborted();
     const latest = await tx.researchReport.aggregate({ where: { companyId }, _max: { version: true } });
     await tx.company.update({ where: { id: companyId }, data: { researchQueuedAt: null } });
+    signal?.throwIfAborted();
     const saved = await tx.researchReport.create({ data: { companyId, version: (latest._max.version ?? 0) + 1, origin: 'AI', summary: report.summary.text, data: json(report), score: { create: { companyId, ...score, breakdown: json(score.breakdown) } } }, include: { score: true } });
     await enqueueCompany(tx, companyId, saved.score?.id);
+    signal?.throwIfAborted();
     return saved;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
@@ -46,9 +51,11 @@ export async function applySuggestedPriority(db: PrismaClient, companyId: string
   });
 }
 
-export async function generateCompanyScript(db: PrismaClient, companyId: string, requestedProduct?: string) {
+export async function generateCompanyScript(db: PrismaClient, companyId: string, requestedProduct?: string, signal?: AbortSignal) {
   const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, include: { evidence: true, contacts: true, activities: { where: { type: { in: ['CALL', 'MEETING', 'NOTE'] } }, orderBy: { createdAt: 'desc' }, take: 5 } } });
-  const existingDraft = await db.script.findFirst({ where: { companyId, status: 'BORRADOR' }, orderBy: { version: 'desc' } });
+  const latestScript = await db.script.findFirst({ where: { companyId }, orderBy: { version: 'desc' } });
+  // Solo se reutiliza el borrador vigente con el marco actual; los borradores antiguos quedan como historial.
+  const existingDraft = latestScript && isReusableDraft(latestScript) ? latestScript : null;
   if (company.acceptanceStatus !== 'ACCEPTED') throw new Error('La empresa está pendiente de aceptar o descartada.');
   if (existingDraft) return existingDraft;
   const report = await db.researchReport.findFirstOrThrow({ where: { companyId, origin: 'AI' }, orderBy: { version: 'desc' } });
@@ -63,10 +70,15 @@ export async function generateCompanyScript(db: PrismaClient, companyId: string,
   const input = scriptPrompt(context, research, product, templates.map(item => item.content), file.cadencia_estandar, example);
   const script = await generateJson({ ...input,
     schema: generatedScriptSchema(context.evidence, product.line, file.cadencia_estandar, [...context.allowedNames, product.line], { companyName: company.name, personNames: context.personNames, companyEvidence: context.evidence.filter(e => !e.id.startsWith('activity-')) }),
-  }, { db, companyId, purpose: 'script', mockResponse: example });
+  }, { db, companyId, signal, purpose: 'script', mockResponse: example });
+  signal?.throwIfAborted();
   return db.$transaction(async tx => {
+    signal?.throwIfAborted();
     const latest = await tx.script.aggregate({ where: { companyId }, _max: { version: true } });
-    return tx.script.create({ data: { companyId, version: (latest._max.version ?? 0) + 1, author: 'IA', status: 'BORRADOR', content: json(script) } });
+    signal?.throwIfAborted();
+    const saved = await tx.script.create({ data: { companyId, version: (latest._max.version ?? 0) + 1, author: 'IA', status: 'BORRADOR', content: json(script) } });
+    signal?.throwIfAborted();
+    return saved;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 

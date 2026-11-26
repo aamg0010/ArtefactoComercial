@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import templates from '../../../data/guiones.json';
 import { companyScriptContext, scriptPrompt, lacksWebsiteResearch } from './script-context';
 import { mockResearch } from './schema';
-import { forbiddenPhrases, generatedScriptSchema, mockScript, normalizeScriptText } from './scripts';
+import { forbiddenPhrases, generatedScriptSchema, isReusableDraft, mockScript, normalizeScriptText } from './scripts';
 import { defaultSignature, emailBodyWithoutFooter, personalizeGreeting } from '../mi-dia/script-email';
 import { productCatalog } from '../products/catalog';
 import { generateJson } from '../llm';
@@ -73,4 +73,12 @@ it('acepta cifras que forman parte del nombre de la empresa y sigue rechazando l
   expect(issues(script)).not.toContain('Cifra no documentada: 2000');
   script.emails[1].cuerpo += ' Ahorra 35 horas.';
   expect(issues(script)).toContain('Cifra no documentada: 35');
+});
+
+it('solo reutiliza borradores con el marco nuevo; los antiguos o aprobados se regeneran', () => {
+  expect(isReusableDraft({ status: 'BORRADOR', content: base() })).toBe(true);
+  expect(isReusableDraft({ status: 'APPROVED', content: base() })).toBe(false);
+  const antiguo = base(); antiguo.emails = antiguo.emails.map(e => ({ ...e, cuerpo: e.cuerpo.replace('[NOMBRE]', 'equipo') }));
+  expect(isReusableDraft({ status: 'BORRADOR', content: antiguo })).toBe(false);
+  expect(isReusableDraft({ status: 'BORRADOR', content: { otro: true } })).toBe(false);
 });

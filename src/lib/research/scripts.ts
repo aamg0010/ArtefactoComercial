@@ -112,3 +112,10 @@ export function mockScript(company: string, product: string, research: Research,
     fuentes: research.sources.map(source => source.id), nota: 'Propuesta estimada; confirmar las necesidades y el rol del decisor antes de usar.',
   };
 }
+
+/** Un borrador se reutiliza si es la última versión y ya sigue el marco de emails con saludo [NOMBRE]. */
+export function isReusableDraft(script: { status: string; content: unknown }) {
+  if (script.status !== 'BORRADOR') return false;
+  const parsed = generatedScriptShape.safeParse(script.content);
+  return parsed.success && parsed.data.emails.every(email => email.cuerpo.includes('[NOMBRE]'));
+}
