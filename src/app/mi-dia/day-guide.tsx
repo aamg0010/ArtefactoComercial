@@ -1,3 +1,4 @@
+import { displayCompanyName } from '@/lib/prospecting/live-names';
 import Link from 'next/link';
 import type { buildGuide } from '@/lib/guia/engine';
 import { addDays } from '@/lib/guia/engine';
@@ -14,7 +15,7 @@ export function DayGuide({ guide, canEdit }: { guide: ReturnType<typeof buildGui
       <summary className="cursor-pointer font-semibold">{group.title} ({group.count})</summary>
       {group.id === 'prepare' ? <p className="mt-2 text-sm">Sin investigar: {guide.preparation.research} · Investigadas sin guion: {guide.preparation.script} · Borradores sin aprobar: {guide.preparation.approval}</p> :
         <ol className="mt-3 space-y-4">{group.items.map(item => <li key={item.id} data-notice-id={item.id} className="min-w-0 rounded-lg border border-slate-200 p-3">
-          <p className="font-semibold">{item.companyId ? <Link className="hover:underline" href={`/empresas/${item.companyId}`}>{item.companyName}</Link> : item.companyName}</p>
+          <p className="font-semibold">{item.companyId ? <Link className="hover:underline" href={`/empresas/${item.companyId}`}>{displayCompanyName({ id: item.companyId ?? '', name: item.companyName })}</Link> : displayCompanyName({ id: '', name: item.companyName })}</p>
           <p>{item.title}</p><p className="text-sm text-slate-600">{item.reason}</p>
           {group.id === 'replies' && <Link className="btn-secondary mt-2 inline-block" href="/pipeline">Ver respuesta</Link>}
           {canEdit && group.id !== 'tomorrow' && <div className="mt-3 flex min-w-0 flex-wrap gap-2">

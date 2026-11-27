@@ -1,3 +1,4 @@
+import { withoutPlaceIds } from '@/lib/prospecting/live-names';
 import type { Company, CompanySource, Contact } from '@prisma/client';
 import { isVerifiedDirectContact } from '@/lib/company-contact';
 import { consentLabels, legalBasisInfo, sourceLabels, sourceLink } from '@/lib/contacts/labels';
@@ -26,7 +27,7 @@ export function CompanyContact({ company, contacts, sources, editable }: { compa
       <Field label="Prioridad actual">{company.priority ?? 'Sin asignar'}</Field>
       <Field label="Próxima acción">{company.nextAction ?? 'Por definir'}</Field>
       <Field label="Origen">
-        {company.sourceDetail}
+        {company.sourceDetail ? withoutPlaceIds(company.sourceDetail) : null}
         {sources.map(source => {
           const href = sourceLink(source.source, source.sourceRef, source.sourceUrl);
           return <span key={source.id} className="block text-sm text-slate-600">

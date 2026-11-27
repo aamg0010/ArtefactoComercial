@@ -1,3 +1,5 @@
+import { CompanyName } from '@/app/company-name';
+import { liveCompanyNames } from '@/lib/prospecting/live-names';
 import { loadContactStatuses } from '@/lib/contact-status-service';
 import { prisma } from '@/lib/prisma';
 import { recordTaskResult } from './actions';
@@ -48,6 +50,7 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
   const target = requested.success ? await prisma.task.findUnique({ where: { id: requested.data }, include }) : null;
   const statuses = await loadContactStatuses(prisma, [...new Set([...candidates.map(t => t.companyId), ...(target ? [target.companyId] : [])])]);
   const all = candidates.filter(task => statuses.get(task.companyId)?.color !== 'gray');
+  const liveNames = await liveCompanyNames(all.map(task => task.company));
   const products = [...new Set(all.flatMap(productLines))].sort((a, b) => a.localeCompare(b, 'es'));
   if (filters.producto && !products.includes(filters.producto)) filters = { ...filters, producto: '' };
   const focused = target && (companyInScope(target.company, scope) || target.assigneeId === scope.userId) && taskInScope(target, scope) && target.status === 'PENDING' && target.type === 'EMAIL' && target.company.acceptanceStatus === 'ACCEPTED' && target.script?.status === 'APPROVED' && taskEmail(target) && statuses.get(target.companyId)?.color !== 'gray' ? target : null;
@@ -63,8 +66,8 @@ export default async function MyDay({ searchParams }: { searchParams: Record<str
     const selected = task.id === focused?.id;
     const email = taskEmail(task);
     return <article id={`tarea-${task.id}`} key={task.id} className={`card scroll-mt-4 p-4 ${selected ? 'border-try-500 ring-2 ring-try-500' : ''}`}>
-      {selected && <p role="status" className="mb-2 font-semibold">Email preparado desde la ficha de {task.company.name}</p>}
-      <h3 className="font-semibold"><Link className="font-medium hover:underline" href={`/empresas/${task.companyId}`}><span className={`badge badge-${(task.company.priority ?? 'C').toLowerCase()} mr-2 align-middle`}>{task.company.priority ?? 'Sin prioridad'}</span>{task.company.name}</Link></h3>
+      {selected && <p role="status" className="mb-2 font-semibold">Email preparado desde la ficha de <CompanyName company={task.company} names={liveNames}/></p>}
+      <h3 className="font-semibold"><Link className="font-medium hover:underline" href={`/empresas/${task.companyId}`}><span className={`badge badge-${(task.company.priority ?? 'C').toLowerCase()} mr-2 align-middle`}>{task.company.priority ?? 'Sin prioridad'}</span><CompanyName company={task.company} names={liveNames}/></Link></h3>
       {task.result && <p className="whitespace-pre-wrap text-sm text-slate-600">{task.result}</p>}<p>{task.title}{task.dueAt && taskDate(task.dueAt)! > day && <span className="text-slate-500"> · para el {taskDate(task.dueAt)!.split('-').reverse().join('/')}</span>}</p>
       {task.script && <details className="mt-2"><summary>Guion y emails</summary><ScriptView content={task.script.content as Content}/></details>}
       {canEdit && task.type === 'EMAIL' && task.script?.status === 'APPROVED' && email && (enabled || selected) && <EmailApproval contacts={task.company.contacts} status={statuses.get(task.companyId)!} taskId={task.id} fecha={day} to={task.company.email ?? task.company.contacts.find(contact => contact.email)?.email ?? ''} email={email} firma={firma} open={selected} enabled={enabled}/>}

@@ -20,25 +20,25 @@ export class GooglePlacesAdapter implements SourceAdapter {
   readonly id = 'google-places' as const;
   constructor(private readonly key: string, private readonly dependencies: Dependencies = {}) {}
 
-  private async request(url: string, body?: object) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+  private async request(url: string, body?: object, options: { fieldMask?: string; timeoutMs?: number; signal?: AbortSignal; attempts?: number } = {}) {
+    for (let attempt = 0; attempt < (options.attempts ?? 3); attempt++) {
       try {
         const response = await (this.dependencies.fetcher ?? fetch)(url, {
-          method: body ? 'POST' : 'GET', cache: 'no-store', signal: AbortSignal.timeout(15_000),
+          method: body ? 'POST' : 'GET', cache: 'no-store', signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(options.timeoutMs ?? 15_000)]) : AbortSignal.timeout(options.timeoutMs ?? 15_000),
           headers: { 'content-type': 'application/json', 'X-Goog-Api-Key': this.key,
-            'X-Goog-FieldMask': body ? placesFieldMask : placesFieldMask.split(',').filter(field => field !== 'nextPageToken').map(field => field.replace(/^places\./, '')).join(',') },
+            'X-Goog-FieldMask': options.fieldMask ?? (body ? placesFieldMask : placesFieldMask.split(',').filter(field => field !== 'nextPageToken').map(field => field.replace(/^places\./, '')).join(',')) },
           ...(body ? { body: JSON.stringify(body) } : {}),
         });
         if (!response.ok) {
           await response.body?.cancel();
           const error = new SourceError(`GOOGLE_HTTP_${response.status}`);
           if (response.status !== 429 && response.status < 500) throw error;
-          if (attempt === 2) throw error;
+          if (attempt === (options.attempts ?? 3) - 1) throw error;
         } else return await response.json() as unknown;
       } catch (error) {
         if (error instanceof SourceError) {
-          if (!/^GOOGLE_HTTP_(429|5\d\d)$/.test(error.code) || attempt === 2) throw error;
-        } else if (attempt === 2) throw new SourceError('GOOGLE_NETWORK_ERROR');
+          if (!/^GOOGLE_HTTP_(429|5\d\d)$/.test(error.code) || attempt === (options.attempts ?? 3) - 1) throw error;
+        } else if (attempt === (options.attempts ?? 3) - 1) throw new SourceError('GOOGLE_NETWORK_ERROR');
       }
       await (this.dependencies.pause ?? wait)(1000 * (attempt + 1));
     }
@@ -91,6 +91,14 @@ export class GooglePlacesAdapter implements SourceAdapter {
       }
     }
     return candidates;
+  }
+
+  async displayName(placeId: string, signal?: AbortSignal): Promise<string> {
+    const parsed = z.object({ id: z.string(), displayName: z.object({ text: z.string().trim().min(1) }) }).safeParse(
+      await this.request(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, undefined,
+        { fieldMask: 'id,displayName', timeoutMs: 5_000, attempts: 1, signal }));
+    if (!parsed.success) throw new SourceError('GOOGLE_RESPONSE_INVALID');
+    return parsed.data.displayName.text;
   }
 
   async details(placeId: string, country: 'ES' | 'CO') {

@@ -1,3 +1,5 @@
+import { CompanyName } from '@/app/company-name';
+import { liveCompanyNames, withoutPlaceIds } from '@/lib/prospecting/live-names';
 import { z } from 'zod';
 import { loadContactStatuses } from '@/lib/contact-status-service';
 import { ContactBadge } from '@/app/contact-status';
@@ -44,8 +46,9 @@ export default async function Prospecting({ searchParams }: { searchParams: { er
     const matches = matchSchema.safeParse(run.matches);
     return matches.success ? matches.data.filter(m => m.outcome === 'DUPLICATE' && m.companyId).map(m => m.companyId!) : [];
   }))];
-  const existingMatches = duplicateIds.length ? await prisma.company.findMany({ where: { id: { in: duplicateIds } } }) : [];
+  const existingMatches = duplicateIds.length ? await prisma.company.findMany({ where: { id: { in: duplicateIds } }, include: { sourceIdentities: true } }) : [];
   const statuses = await loadContactStatuses(prisma, [...companies.map(c => c.id), ...duplicateIds]);
+  const liveNames = await liveCompanyNames([...companies, ...existingMatches]);
   const hidden = ready.filter(c => ['red', 'gray'].includes(statuses.get(c.id)!.color)).length;
   const editor = (profile?: SearchProfile) => <form action={prospectingAction} className="grid gap-3 md:grid-cols-2">
     <input type="hidden" name="profileId" value={profile?.id ?? ''}/>
@@ -77,19 +80,19 @@ export default async function Prospecting({ searchParams }: { searchParams: { er
       {manage && <details><summary>Editar perfil</summary>{editor(profile)}</details>}
     </article>)}</section>
     <section aria-label="Detectadas hoy" className="card p-4"><h2 className="text-lg font-semibold">Detectadas hoy ({readyCount + pendingCount}) · {day}</h2>
-      {existingMatches.length > 0 && <section aria-label="Coincidencias con empresas existentes"><h3 className="font-semibold">Ya estaban en la base ({existingMatches.length})</h3><ul>{existingMatches.map(company => <li key={company.id}><Link className="underline" href={`/empresas/${company.id}`}>{company.name}</Link><ContactBadge status={statuses.get(company.id)!}/></li>)}</ul></section>}
+      {existingMatches.length > 0 && <section aria-label="Coincidencias con empresas existentes"><h3 className="font-semibold">Ya estaban en la base ({existingMatches.length})</h3><ul>{existingMatches.map(company => <li key={company.id}><Link className="underline" href={`/empresas/${company.id}`}><CompanyName company={company} names={liveNames}/></Link><ContactBadge status={statuses.get(company.id)!}/></li>)}</ul></section>}
       {(['ACCEPTED', 'PENDING'] as const).map(status => {
         const rows = companies.filter(company => company.acceptanceStatus === status && (status !== 'ACCEPTED' || searchParams.contactadas === '1' || !['red', 'gray'].includes(statuses.get(company.id)!.color))); const label = status === 'ACCEPTED' ? 'Listas para trabajar' : 'Pendientes de aceptar';
         const count = status === 'ACCEPTED' ? readyCount : pendingCount;
         return <section key={status} aria-label={label}><h3 className="font-semibold">{label} ({rows.length})</h3>
           {status === 'ACCEPTED' && hidden > 0 && <Link className="my-2 block underline" href={searchParams.contactadas === '1' ? '/rastreo' : '/rastreo?contactadas=1'}>{searchParams.contactadas === '1' ? 'Ocultar las contactadas' : `Ver también las contactadas (${hidden})`}</Link>}
           {count > (status === 'ACCEPTED' ? ready.length : pending.length) && <p>Se muestran las 200 más recientes de este grupo antes de filtrar por contacto.</p>}
-          <ul>{rows.map(company => <li className="my-2" key={company.id}><Link className="font-medium hover:underline" prefetch={false} href={`/empresas/${company.id}`}>{company.name}</Link><ContactBadge status={statuses.get(company.id)!}/> · {company.city ?? 'Ubicación por verificar'} · {company.source} · {company.researchQueuedAt ? 'Investigación en cola' : status === 'PENDING' ? 'Revisión humana requerida' : 'Sin investigación pendiente'} {company.sourceIdentities.filter(source => source.attribution).map(source => <a key={source.id} className="ml-2 font-medium hover:underline" href="https://www.openstreetmap.org/copyright">{source.attribution}</a>)}</li>)}</ul></section>;
+          <ul>{rows.map(company => <li className="my-2" key={company.id}><Link className="font-medium hover:underline" prefetch={false} href={`/empresas/${company.id}`}><CompanyName company={company} names={liveNames}/></Link><ContactBadge status={statuses.get(company.id)!}/> · {company.city ?? 'Ubicación por verificar'} · {company.source} · {company.researchQueuedAt ? 'Investigación en cola' : status === 'PENDING' ? 'Revisión humana requerida' : 'Sin investigación pendiente'} {company.sourceIdentities.filter(source => source.attribution).map(source => <a key={source.id} className="ml-2 font-medium hover:underline" href="https://www.openstreetmap.org/copyright">{source.attribution}</a>)}</li>)}</ul></section>;
       })}
     </section>
     <section aria-label="Historial de ejecuciones" className="overflow-x-auto card p-4"><h2 className="text-lg font-semibold">Historial de ejecuciones</h2>
       <table className="w-full text-left"><thead><tr>{['Perfil / fuente', 'Inicio / fin', 'Estado', 'Candidatas', 'Nuevas', 'Duplicadas', 'Suprimidas', 'Errores', 'Consultas / coincidencias'].map(label => <th key={label}>{label}</th>)}</tr></thead>
-        <tbody>{runs.map(run => <tr key={run.id}><td>{run.profile.name} · {run.source}</td><td>{run.startedAt.toISOString()}<br/>{run.finishedAt?.toISOString() ?? 'En curso'}</td><td>{run.status}</td><td>{run.candidates}</td><td>{run.created}</td><td>{run.duplicates}</td><td>{run.suppressed}</td><td>{run.errors}</td><td><details><summary>Ver registro</summary><pre className="whitespace-pre-wrap text-xs">{JSON.stringify({ queries: run.queries, matches: run.matches, errors: run.errorCodes }, null, 2)}</pre></details></td></tr>)}</tbody>
+        <tbody>{runs.map(run => <tr key={run.id}><td>{run.profile.name} · {run.source}</td><td>{run.startedAt.toISOString()}<br/>{run.finishedAt?.toISOString() ?? 'En curso'}</td><td>{run.status}</td><td>{run.candidates}</td><td>{run.created}</td><td>{run.duplicates}</td><td>{run.suppressed}</td><td>{run.errors}</td><td><details><summary>Ver registro</summary><pre className="whitespace-pre-wrap text-xs">{withoutPlaceIds(JSON.stringify({ queries: run.queries, matches: run.matches, errors: run.errorCodes }, null, 2))}</pre></details></td></tr>)}</tbody>
       </table>
     </section>
   </main>;

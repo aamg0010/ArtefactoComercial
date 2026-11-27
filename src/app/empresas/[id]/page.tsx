@@ -1,3 +1,5 @@
+import { CompanyName } from '@/app/company-name';
+import { liveCompanyNames } from '@/lib/prospecting/live-names';
 import { companyJobState, isCompanyJobRunning } from '@/lib/jobs/company-jobs';
 import { isReusableDraft } from '@/lib/research/scripts';
 import { JobRefresh } from './job-refresh';
@@ -55,6 +57,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     contacts: true, sourceIdentities: true, evidence: { orderBy: { createdAt: 'desc' } }, researchReports: { orderBy: { version: 'desc' }, include: { score: true } }, scripts: { orderBy: { version: 'desc' } },
   } });
   if (!company) notFound();
+  const liveNames = await liveCompanyNames([company]);
   const contact = (await loadContactStatuses(prisma, [company.id])).get(company.id)!;
   const guide = session?.user?.id ? await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES', team: true }, new Date(), undefined, company.id) : null;
   const notices = guide?.groups.filter(g => ['overdue', 'next', 'stalled', 'closed', 'reminders'].includes(g.id)).flatMap(g => g.items) ?? [];
@@ -79,7 +82,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     {scriptState === 'ready' && <p role="status">Guion nuevo listo: revísalo y apruébalo.</p>}
     {researchState === 'ready' && <p role="status">Investigación lista.</p>}
     {(scriptState === 'failed' || researchState === 'failed') && <p role="alert">No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.</p>}
-    <h1 className="page-title break-words">{company.name}</h1>
+    <h1 className="page-title break-words"><CompanyName company={company} names={liveNames}/></h1>
     <section aria-label="Estado de contacto" className="card p-4"><ContactBadge status={contact} detail/></section>
     {notices.length > 0 && <section aria-label="Avisos de seguimiento" className="rounded-xl border border-amber-200 bg-amber-50 p-4"><h2 className="font-semibold">Guía del día</h2><ul>{notices.map(item => <li key={`${item.id}-${item.title}`}>{item.title} · {item.reason}</li>)}</ul><Link className="underline" href="/mi-dia">Gestionar en Mi día</Link></section>}
     <p>Revisión: {company.acceptanceStatus === 'PENDING' ? 'Pendiente de aceptar' : company.acceptanceStatus === 'DISCARDED' ? 'Descartada' : 'Lista para trabajar'}</p>

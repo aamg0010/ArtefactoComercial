@@ -1,3 +1,5 @@
+import { CompanyName } from '@/app/company-name';
+import { liveCompanyNames, displayCompanyName } from '@/lib/prospecting/live-names';
 import { loadContactStatuses } from '@/lib/contact-status-service';
 import { ContactBadge } from '@/app/contact-status';
 import { auth } from '@/auth';
@@ -19,7 +21,8 @@ export default async function Pipeline({ searchParams }: { searchParams: { gesti
     where: { status: 'HANDLED', handledAt: { gte: new Date(Date.now() - 30 * 86400000) } },
     include: { company: true }, orderBy: { handledAt: 'desc' },
   }) : [];
-  const companies = await prisma.company.findMany({ orderBy: { priority: 'asc' } });
+  const companies = await prisma.company.findMany({ include: { sourceIdentities: true }, orderBy: { priority: 'asc' } });
+  const liveNames = await liveCompanyNames(companies);
   const statuses = await loadContactStatuses(prisma, companies.map(c => c.id));
   const repliedCompanies = new Set(replies.map(reply => reply.companyId));
   return <main className="mx-auto max-w-7xl p-5">
@@ -36,10 +39,10 @@ export default async function Pipeline({ searchParams }: { searchParams: { gesti
     <div className="mt-5 grid grid-flow-col auto-cols-[16rem] gap-3 overflow-x-auto">{pipelineStages.map(([stage, label]) => <section aria-label={label} className="rounded-2xl border border-try-100 bg-try-50/60 p-3" key={stage}>
       <h2 className="flex items-center justify-between font-display text-sm font-semibold uppercase tracking-wide text-try-800">{label}<span className="badge badge-b">{companies.filter(company => company.pipelineStage === stage).length}</span></h2>
       {companies.filter(company => company.pipelineStage === stage).map(company => <article className="mt-2 rounded-xl border border-slate-200 bg-white p-3 shadow-card" key={company.id}>
-        <Link href={`/empresas/${company.id}`}><span className={`badge badge-${(company.priority ?? 'C').toLowerCase()} mr-2`}>{company.priority ?? 'C'}</span><span className="font-display text-sm font-medium text-slate-800">{company.name}</span></Link>
+        <Link href={`/empresas/${company.id}`}><span className={`badge badge-${(company.priority ?? 'C').toLowerCase()} mr-2`}>{company.priority ?? 'C'}</span><span className="font-display text-sm font-medium text-slate-800"><CompanyName company={company} names={liveNames}/></span></Link>
         <ContactBadge status={statuses.get(company.id)!}/>
         {repliedCompanies.has(company.id) && <span className="badge badge-a mt-2">Respondió</span>}
-        {company.trygestionEmpresaId && <a className="mt-2 block font-display text-xs text-try-500 hover:text-try-700" href={trygestionEmpresaUrl(company.trygestionEmpresaId)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${company.name} en trygestión`}>trygestión ↗</a>}
+        {company.trygestionEmpresaId && <a className="mt-2 block font-display text-xs text-try-500 hover:text-try-700" href={trygestionEmpresaUrl(company.trygestionEmpresaId)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${displayCompanyName(company, liveNames)} en trygestión`}>trygestión ↗</a>}
       </article>)}
     </section>)}</div>
   </main>;
