@@ -1,3 +1,6 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { createElement } from 'react';
+import { liveCompanyNames, displayCompanyName } from './lib/prospecting/live-names';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -494,6 +497,14 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
     const company = await db.company.findFirstOrThrow({ where: { discoveryRunId: run.id }, include: { sourceIdentities: true, contacts: true } });
     expect(company.website).toBeNull(); expect(company.phone).toBeNull(); expect(company.address).toBeNull(); expect(company.contacts[0].phone).toBeNull();
     expect(company.name).not.toBe(candidate.name); expect(company.sourceIdentities[0].sourceRef).toBe('place-id-test');
+    const names = await liveCompanyNames([company], { apiKey: 'fake', read: async () => candidate.name });
+    const html = renderToStaticMarkup(createElement('h1', null, displayCompanyName(company, names)));
+    expect(html).toContain(candidate.name);
+    const afterRender = await db.company.findUniqueOrThrow({ where: { id: company.id } });
+    expect(afterRender.name).toBe(company.name);
+    expect(afterRender.name).toMatch(/^Empresa detectada ·/);
+    expect(JSON.stringify(afterRender)).not.toContain(candidate.name);
+
     expect(JSON.stringify(run)).not.toContain(candidate.name); expect(JSON.stringify(run)).not.toContain(candidate.website!);
   });
   it('un perfil inactivo no ejecuta adaptadores', async () => {

@@ -1,3 +1,4 @@
+import { displayCompanyName } from '@/lib/prospecting/live-names';
 import type { Company, EmailReply } from '@prisma/client';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
@@ -10,7 +11,7 @@ import { handleReply } from './reply-actions';
 export async function ReplyCards({ replies, canEdit }: { replies: (EmailReply & { company: Company | null })[]; canEdit: boolean }) {
   const suppressed = new Set((await Promise.all([...new Set(replies.flatMap(reply => reply.companyId ? [reply.companyId] : []))].map(async id => await isSuppressed(prisma, id) ? id : null))).filter(Boolean));
   return <div className="my-4 space-y-4">{replies.map(reply => <article className="card space-y-2 p-4 [overflow-wrap:anywhere]" key={reply.id} data-reply-id={reply.id}>
-    <h3 className="font-semibold">{reply.company ? <Link href={`/empresas/${reply.company.id}`}>{reply.company.name}</Link> : 'Sin empresa vinculada'}</h3>
+    <h3 className="font-semibold">{reply.company ? <Link href={`/empresas/${reply.company.id}`}>{displayCompanyName(reply.company)}</Link> : 'Sin empresa vinculada'}</h3>
     {suppressed.has(reply.companyId) && <p role="alert" className="rounded-lg bg-amber-50 p-2 text-amber-900">Empresa dada de baja. Revisa la supresión antes de contactar.</p>}
     <p><a href={`mailto:${reply.fromEmail}`}>{reply.fromEmail}</a> · <time dateTime={reply.receivedAt.toISOString()}>{new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', dateStyle: 'short', timeStyle: 'short' }).format(reply.receivedAt)} (Madrid)</time></p>
     <p className="font-semibold">{reply.subject}</p>
