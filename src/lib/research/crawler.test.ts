@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { crawlCompanyWebsite, htmlText, isPublicAddress, robotsAllowed, isCanonicalRedirect } from './crawler';
+import { crawlCompanyWebsite, htmlText, isPublicAddress, robotsAllowed, isCanonicalRedirect, isDomainMove } from './crawler';
 
 it('robots respeta el agente específico, las exclusiones y la regla más precisa', () => {
   const robots = 'User-agent: *\nDisallow: /\nUser-agent: try-comercial-bot\nDisallow: /privado\nAllow: /privado/contacto$';
@@ -74,4 +74,33 @@ it('admite robots redirigido al alias canónico y comprueba sus reglas', async (
 it('rechaza subdominios arbitrarios, credenciales, puertos y downgrades HTTPS', () => {
   const base = new URL('https://empresa.test');
   for (const url of ['https://otra.empresa.test', 'http://empresa.test', 'https://www.empresa.test:8443', 'https://usuario@www.empresa.test']) expect(isCanonicalRedirect(base, new URL(url))).toBe(false);
+});
+
+it('sigue una web mudada a otro dominio (portada https) y respeta allí robots.txt', async () => {
+  const request = vi.fn(async (url: URL) => {
+    if (url.hostname === 'www.antigua.test') return url.pathname === '/robots.txt'
+      ? { status: 301, text: '', location: 'https://nueva.test/robots.txt' }
+      : { status: 301, text: '', location: 'https://nueva.test' };
+    return url.pathname === '/robots.txt' ? { status: 404, text: '' } : { status: 200, text: '<title>Nueva</title><p>Construcción y excavaciones</p>' };
+  });
+  const result = await crawlCompanyWebsite('http://www.antigua.test/', request);
+  expect(result.sources[0]?.url).toBe('https://nueva.test/');
+  expect(request.mock.calls.map(([url]) => url.href)).toEqual(['http://www.antigua.test/robots.txt', 'http://www.antigua.test/', 'https://nueva.test/robots.txt', 'https://nueva.test/']);
+});
+it('no sigue mudanzas a http, a páginas interiores ni a destinos con puerto o credenciales', () => {
+  const from = new URL('http://www.antigua.test/');
+  expect(isDomainMove(from, new URL('https://nueva.test/'))).toBe(true);
+  expect(isDomainMove(from, new URL('http://nueva.test/'))).toBe(false);
+  expect(isDomainMove(from, new URL('https://nueva.test/oferta'))).toBe(false);
+  expect(isDomainMove(from, new URL('https://nueva.test:8443/'))).toBe(false);
+  expect(isDomainMove(from, new URL('https://user:pw@nueva.test/'))).toBe(false);
+  expect(isDomainMove(new URL('http://www.antigua.test/contacto'), new URL('https://nueva.test/'))).toBe(false);
+});
+it('una redirección de portada a otro dominio sin https sigue considerándose no consultable', async () => {
+  const request = vi.fn(async (url: URL) => url.hostname === 'www.antigua.test'
+    ? { status: 301, text: '', location: url.pathname === '/robots.txt' ? 'http://otra.test/robots.txt' : 'http://otra.test/' }
+    : { status: 200, text: '<p>Otra</p>' });
+  const result = await crawlCompanyWebsite('http://www.antigua.test/', request);
+  expect(result.sources).toEqual([]);
+  expect(request.mock.calls.every(([url]) => url.hostname === 'www.antigua.test')).toBe(true);
 });
