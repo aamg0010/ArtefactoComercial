@@ -46,10 +46,10 @@ test('Pretersa: investigar, puntuar, generar borrador, aprobar y ver tareas', as
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Pretersa.*Prenavisa/i);
   await expect(page.getByText('IA en modo simulado', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Investigar', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Puntuación', exact: true })).toContainText(/Puntuación: \d+\/100/);
+  await expect(page.getByRole('region', { name: 'Puntuación', exact: true })).toContainText(/Puntuación: \d+\/100/, { timeout: 20000 });
   await expect(page.getByRole('region', { name: 'Investigación', exact: true })).toContainText('Sin web');
   await page.getByRole('button', { name: 'Generar guion', exact: true }).click();
-  await expect(page.getByRole('heading', { name: /Guion versión.*BORRADOR/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Guion versión.*BORRADOR/ })).toBeVisible({ timeout: 20000 });
   await expect(page.getByRole('region', { name: 'Guiones', exact: true })).toContainText('BAJA');
   await page.getByRole('button', { name: 'Aprobar guion', exact: true }).click();
   await expect(page.getByRole('heading', { name: /Guion versión.*Aprobado/ })).toBeVisible();

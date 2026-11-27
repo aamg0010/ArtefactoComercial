@@ -30,9 +30,11 @@ export function generatedScriptSchema(evidence: Evidence[], product: string, cad
     for (const text of texts) {
       const normalized = normalizeScriptText(text);
       for (const phrase of forbiddenPhrases) if (normalized.includes(normalizeScriptText(phrase))) issue(`Frase prohibida: «${phrase}». Quítala y reescribe.`);
-      for (const name of options.personNames ?? []) {
+      // El nombre de la empresa no es un nombre de persona aunque contenga un apellido (p. ej. «Frutos Secos Gil»).
+      const forNames = options.companyName ? normalized.split(normalizeScriptText(options.companyName)).join(' ') : normalized;
+      for (const name of (options.personNames ?? []).filter(n => !isOrganizationName(n, options.companyName ?? ''))) {
         const parts = [name, name.split(/\s+/)[0]].filter(v => v.length > 2);
-        if (parts.some(p => new RegExp(`(^|[^a-z])${normalizeScriptText(p).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(normalized))) issue(`No escribas nombres de personas: ${name}. Usa [NOMBRE] solo en el saludo.`);
+        if (parts.some(p => new RegExp(`(^|[^a-z])${normalizeScriptText(p).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(forNames))) issue(`No escribas nombres de personas: ${name}. Usa [NOMBRE] solo en el saludo.`);
       }
       // Los mensajes nombran lo detectado para que la IA lo corrija en el siguiente intento.
       const names = unsupportedNames(text, evidence, allowedNames);
@@ -111,4 +113,20 @@ export function mockScript(company: string, product: string, research: Research,
     cadencia: cadence.map(step => ({ ...step, canal: step.canal as 'email' | 'llamada', accion: step.accion.replace(/\s*\((?:emails?\[\d+\]|llamada)\)/gi, '') })),
     fuentes: research.sources.map(source => source.id), nota: 'Propuesta estimada; confirmar las necesidades y el rol del decisor antes de usar.',
   };
+}
+
+/** Un borrador se reutiliza si es la última versión y ya sigue el marco de emails con saludo [NOMBRE]. */
+export function isReusableDraft(script: { status: string; content: unknown }) {
+  if (script.status !== 'BORRADOR') return false;
+  const parsed = generatedScriptShape.safeParse(script.content);
+  return parsed.success && parsed.data.emails.every(email => email.cuerpo.includes('[NOMBRE]'));
+}
+
+/** Contactos guardados con el nombre de la empresa o de una organización (p. ej. «Cooperativa Agrícola San Lorenzo») no son personas. */
+export function isOrganizationName(name: string, companyName: string) {
+  const plain = (value: string) => normalizeScriptText(value).replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const person = plain(name); const company = plain(companyName);
+  if (!person) return true;
+  if (company && (company.includes(person) || person.includes(company))) return true;
+  return /\b(cooperativa|coop|sociedad|s ?l|s ?a|s ?c ?l|sat|ltda|sas|bodegas?|almazaras?|grupo|hermanos|hnos|industrias?|transportes?|suministros?|talleres?|construcciones|empresa|comercial|distribuciones|alimentacion|foods?)\b/.test(person);
 }

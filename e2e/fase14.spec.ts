@@ -18,7 +18,7 @@ test('guion profesional simulado, saludo de contacto y firma por defecto editabl
     await expect(page).toHaveURL('http://localhost:3100/');
     await page.goto(`/empresas/${companyId}`);
     await page.getByRole('button', { name: 'Generar guion', exact: true }).click();
-    await expect(page.getByText('Guion versión 1 · IA · BORRADOR', { exact: true })).toBeVisible();
+    await expect(page.getByText('Guion versión 1 · IA · BORRADOR', { exact: true })).toBeVisible({ timeout: 20000 });
     await page.getByRole('button', { name: 'Aprobar guion', exact: true }).click();
     await expect(page.getByText('Guion versión 1 · IA · Aprobado', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Enviar desde Mi día', exact: true }).first().click();

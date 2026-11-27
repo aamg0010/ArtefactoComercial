@@ -24,7 +24,7 @@ export function llmConfiguration(env: Environment = process.env, purpose?: strin
 
 type Context = {
   db: PrismaClient; companyId: string; purpose: string; mockResponse: unknown;
-  env?: Environment; fetcher?: typeof fetch; pause?: (ms: number) => Promise<unknown>;
+  signal?: AbortSignal; env?: Environment; fetcher?: typeof fetch; pause?: (ms: number) => Promise<unknown>;
 };
 const usageSchema = z.object({ input_tokens: z.number().optional(), output_tokens: z.number().optional() });
 const anthropicSchema = z.object({ content: z.array(z.object({ type: z.string(), text: z.string().optional() })), usage: usageSchema.optional() });
@@ -43,6 +43,9 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
   try {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
+        context.signal?.throwIfAborted();
+        // Retardo exclusivamente de fixtures E2E para observar el trabajo en curso sin red.
+        if (configuration.simulated && process.env.LLM_MOCK_DELAY_MS && process.env.DATABASE_URL?.includes('_e2e')) await wait(Math.min(10_000, Number(process.env.LLM_MOCK_DELAY_MS) || 0), undefined, { signal: context.signal });
         let raw: unknown = context.mockResponse;
         if (configuration.provider === 'trygestion') {
           const result = await new TrygestionClient({ env: context.env, fetcher: context.fetcher }).generarIA({ system: input.system, prompt: input.prompt + feedback, schema: zodToJsonSchema(input.schema, { effectStrategy: 'input', $refStrategy: 'none' }), maxTokens: 4000 });
@@ -53,7 +56,7 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
         } else if (!configuration.simulated) {
           const anthropic = configuration.provider === 'anthropic';
           const response = await (context.fetcher ?? fetch)(anthropic ? 'https://api.anthropic.com/v1/messages' : 'https://api.openai.com/v1/responses', {
-            method: 'POST', signal: AbortSignal.timeout(60_000),
+            method: 'POST', signal: context.signal ? AbortSignal.any([context.signal, AbortSignal.timeout(100_000)]) : AbortSignal.timeout(100_000),
             headers: anthropic ? { 'content-type': 'application/json', 'x-api-key': configuration.key!, 'anthropic-version': '2023-06-01' } : { 'content-type': 'application/json', Authorization: `Bearer ${configuration.key}` },
             body: JSON.stringify(anthropic ? {
               model: configuration.model, max_tokens: 8000, system: input.system,
@@ -70,15 +73,18 @@ export async function generateJson<Schema extends z.ZodTypeAny>(input: { system:
           if (typeof actualModel === 'string') configuration.model = actualModel;
           raw = JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/gi, ''));
         }
+        context.signal?.throwIfAborted();
         const result = input.schema.parse(raw);
         success = true;
         return result;
       } catch (error) {
+        context.signal?.throwIfAborted();
         // Never persist provider bodies, prompts, credentials or Zod input values.
         if (error instanceof z.ZodError) feedback = `\n\nTu respuesta anterior no pasó la validación. Corrige estos puntos y devuelve el JSON completo:\n- ${[...new Set(error.issues.map(issue => `${issue.path.join('.') || 'general'}: ${issue.message}`))].slice(0, 20).join('\n- ')}`;
         errorCode = error instanceof z.ZodError ? 'VALIDATION_ERROR' : error instanceof SyntaxError ? 'INVALID_JSON' : 'PROVIDER_ERROR';
         if (configuration.simulated || attempt === 2) throw new Error(errorCode);
-        await (context.pause ?? wait)(1000 * (attempt + 1));
+        if (context.pause) await context.pause(1000 * (attempt + 1));
+        else await wait(1000 * (attempt + 1), undefined, { signal: context.signal });
       }
     }
     throw new Error('PROVIDER_ERROR');

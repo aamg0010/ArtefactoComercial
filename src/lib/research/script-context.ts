@@ -1,3 +1,4 @@
+import { isOrganizationName } from './scripts';
 import type { Company, CompanyEvidence, Contact, Activity } from '@prisma/client';
 import { productCatalog } from '../products/catalog';
 import { detectSector, sectorPlaybooks } from '../scripts/sector-playbook';
@@ -23,7 +24,7 @@ export function companyScriptContext(company: Company & { evidence: CompanyEvide
   const sector = detectSector({ name: company.name, sector: `${company.sector ?? ''} ${empresa.datosConfirmados.map(e => JSON.stringify(e.datos)).join(' ')}` });
   const manual = sectorPlaybooks[sector];
   const personNames = [...research.personNames, ...company.contacts.map(c => c.fullName), ...company.activities.map(a => a.interlocutor).filter((v): v is string => Boolean(v))];
-  const personalNames = personNames.filter(n => !/^(contacto|recepci[oó]n|administraci[oó]n|gerencia|responsable)\b/i.test(n));
+  const personalNames = personNames.filter(n => !isOrganizationName(n, company.name)).filter(n => !/^(contacto|recepci[oó]n|administraci[oó]n|gerencia|responsable)\b/i.test(n));
   return { empresa, evidence, manual, personNames: personalNames, allowedNames: [company.name, 'try! company', ...productCatalog.map(p => p.line), ...evidence.map(e => e.text), ...manual.vocabulario, ...sectorPlaybooks.general.vocabulario] };
 }
 
