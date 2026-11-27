@@ -1,3 +1,4 @@
+import { withinBudget } from './budget';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import http from 'node:http';
@@ -15,20 +16,21 @@ export function isPublicAddress(address: string) {
 }
 
 /** Pin the validated DNS answer to the socket to prevent DNS rebinding. */
-async function requestPage(url: URL, origin: string): Promise<{ status: number; text: string; location?: string }> {
+async function requestPage(url: URL, origin: string, signal?: AbortSignal): Promise<{ status: number; text: string; location?: string }> {
+  signal?.throwIfAborted();
   if (!['http:', 'https:'].includes(url.protocol) || url.origin !== origin || url.username || url.password || !['', '80', '443'].includes(url.port)) throw new Error('URL no permitida');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);
   try {
     const addresses = await Promise.race([
       lookup(url.hostname.replace(/^\[|\]$/g, ''), { all: true }),
-      new Promise<never>((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('Timeout DNS')), { once: true })),
+      new Promise<never>((_, reject) => (signal ? AbortSignal.any([signal, controller.signal]) : controller.signal).addEventListener('abort', () => reject(new Error('Timeout DNS')), { once: true })),
     ]);
     if (!addresses.length || addresses.some(item => !isPublicAddress(item.address))) throw new Error('Destino privado o reservado');
     const pinned = addresses[0];
     const response = await new Promise<{ status: number; text: string; location?: string }>((resolve, reject) => {
       const request = (url.protocol === 'https:' ? https : http).get(url, {
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
         family: pinned.family,
         headers: { 'user-agent': userAgent, accept: 'text/html,text/plain', 'accept-encoding': 'identity' },
         lookup: (_hostname, _options, callback) => callback(null, pinned.address, pinned.family),
@@ -91,8 +93,15 @@ export function isCanonicalRedirect(from: URL, to: URL) {
 
 class RobotsDenied extends Error {}
 
-export async function crawlCompanyWebsite(website: string | null, request = requestPage): Promise<{ sources: Evidence[]; note: string; business?: SiteBusiness[] }> {
+export async function crawlCompanyWebsite(website: string | null, request = requestPage, options: { signal?: AbortSignal; budgetMs?: number } = {}): Promise<{ sources: Evidence[]; note: string; business?: SiteBusiness[] }> {
   if (!website) return { sources: [], note: 'Sin web: ficha basada únicamente en los datos registrados en el CRM.' };
+  // Explicit offline E2E mode: all website requests are replaced, including research fixtures.
+  if (process.env.E2E_WEBSITE_MOCK === '1' && request === requestPage) {
+    if (website !== 'https://completar.example.invalid') return { sources: [], note: 'Web omitida en la prueba sin red.' };
+    request = async url => ({ status: url.pathname === '/robots.txt' ? 404 : 200, text: '<title>[SIMULADA] Web propia</title><a href="mailto:info@completar.example.invalid">Email corporativo</a>' });
+  }
+  const deadline = Date.now() + Math.min(options.budgetMs ?? 30_000, 30_000);
+  const boundedRequest: typeof requestPage = (url, origin) => withinBudget(signal => request(url, origin, options.signal ? AbortSignal.any([signal, options.signal]) : signal), deadline - Date.now());
   try {
     let home = new URL(website.includes('://') ? website : `https://${website}`);
     home.pathname = '/'; home.search = ''; home.hash = '';
@@ -103,7 +112,7 @@ export async function crawlCompanyWebsite(website: string | null, request = requ
       let url = new URL('/robots.txt', origin);
       for (let redirects = 0; redirects <= 4; redirects++) {
         // requestPage validates and pins public DNS again for every new origin.
-        const response = await request(url, url.origin);
+        const response = await boundedRequest(url, url.origin);
         if (response.location && response.status >= 300 && response.status < 400) {
           const next = new URL(response.location, url);
           if (!isCanonicalRedirect(url, next) || next.pathname !== '/robots.txt') throw new Error('Redirección de robots no permitida');
@@ -121,7 +130,7 @@ export async function crawlCompanyWebsite(website: string | null, request = requ
       for (let redirects = 0; redirects <= 4; redirects++) {
         const robots = await loadRobots(url.origin);
         if (!robotsAllowed(robots, url.pathname + url.search)) throw new RobotsDenied();
-        const response = await request(url, url.origin);
+        const response = await boundedRequest(url, url.origin);
         if (response.location && response.status >= 300 && response.status < 400) {
           const next = new URL(response.location, url);
           if (!isCanonicalRedirect(url, next)) throw new Error('Redirección fuera de la web de empresa');
@@ -142,7 +151,7 @@ export async function crawlCompanyWebsite(website: string | null, request = requ
     const visited = new Set([home.href]);
     for (const url of links) {
       url.hash = ''; url.search = '';
-      if (visited.size === 3) break;
+      if (visited.size === 3 || Date.now() >= deadline || options.signal?.aborted) break;
       if (visited.has(url.href)) continue;
       visited.add(url.href);
       try {

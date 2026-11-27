@@ -58,6 +58,7 @@ describe.runIf(enabled)('integración sobre base aislada', () => {
   beforeAll(async () => {
     vi.stubEnv('LLM_PROVIDER', 'mock');
     vi.stubEnv('GOOGLE_PLACES_API_KEY', '');
+    vi.stubEnv('E2E_WEBSITE_MOCK', '1');
     // This suite owns only the explicitly validated disposable database.
     await db.company.deleteMany();
     await db.sourceThrottle.deleteMany();

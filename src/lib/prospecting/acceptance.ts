@@ -1,3 +1,4 @@
+import { withinBudget } from '../research/budget';
 import { enqueueCompany, enqueueContact, enqueuePipeline } from '../trygestion/outbox';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
@@ -13,7 +14,7 @@ import { candidateSuppressed } from './service';
 
 const httpUrl = z.string().url().refine(value => { try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password; } catch { return false; } });
 const citation = z.object({ value: z.string().max(500), url: httpUrl, date: z.string().datetime() });
-export const proposalSchema = z.object({ companyId: z.string(), expires: z.number(), fields: z.object({ name: citation.optional(), city: citation.optional(), website: citation.optional(), phone: citation.optional(), email: citation.optional() }) });
+export const proposalSchema = z.object({ companyId: z.string(), expires: z.number(), purpose: z.literal('complete-web').optional(), baseline: z.object({ website: z.string().nullable(), phone: z.string().nullable(), email: z.string().nullable() }).optional(), fields: z.object({ name: citation.optional(), city: citation.optional(), website: citation.optional(), phone: citation.optional(), email: citation.optional() }) });
 export type AcceptanceProposal = z.infer<typeof proposalSchema>;
 export const acceptanceInput = z.object({
   name: z.string().trim().min(2).max(250), city: z.string().trim().min(1).max(160),
@@ -31,34 +32,52 @@ export function signProposal(proposal: AcceptanceProposal, secret = process.env.
 export function verifyProposal(token: string, companyId: string, secret = process.env.AUTH_SECRET): AcceptanceProposal | undefined {
   if (!token || token.length > 16000 || !secret) return undefined;
   try {
-    const [body, signature] = token.split('.'); const expected = createHmac('sha256', secret).update(body).digest(); const provided = Buffer.from(signature, 'base64url');
+    const parts = token.split('.'); if (parts.length !== 2) return undefined;
+    const [body, signature] = parts; const expected = createHmac('sha256', secret).update(body).digest(); const provided = Buffer.from(signature, 'base64url');
     if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) return undefined;
     const proposal = proposalSchema.parse(JSON.parse(Buffer.from(body, 'base64url').toString('utf8')));
     return proposal.companyId === companyId && proposal.expires > Date.now() ? proposal : undefined;
   } catch { return undefined; }
 }
 
-export async function prepareAcceptance(db: PrismaClient, companyId: string, dependencies: {
-  details?: (id: string, country: 'ES' | 'CO') => Promise<CandidateCompany | null>; crawl?: typeof crawlCompanyWebsite;
-} = {}) {
+export const safeCompanyId = z.string().min(1).max(191).regex(/^[\w-]+$/);
+export type ProposalDependencies = {
+  details?: (id: string, country: 'ES' | 'CO', signal?: AbortSignal) => Promise<CandidateCompany | null>;
+  crawl?: typeof crawlCompanyWebsite;
+};
+
+/** Google contributes only a transient website locator, never proposed business values. */
+export async function prepareWebsiteProposal(db: PrismaClient, companyId: string, mode: 'accept' | 'complete-web', dependencies: ProposalDependencies = {}) {
+  safeCompanyId.parse(companyId);
   const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, include: { sourceIdentities: true } });
-  if (company.acceptanceStatus !== 'PENDING') throw new Error('COMPANY_NOT_PENDING');
+  if (company.acceptanceStatus !== (mode === 'accept' ? 'PENDING' : 'ACCEPTED')) throw new Error('COMPANY_STATUS');
   const ref = company.sourceIdentities.find(item => item.source === 'google-places');
-  const proposal: AcceptanceProposal = { companyId, expires: Date.now() + 15 * 60_000, fields: {} };
+  const proposal: AcceptanceProposal = { companyId, expires: Date.now() + 15 * 60_000, fields: {},
+    ...(mode === 'complete-web' ? { purpose: 'complete-web' as const, baseline: { website: company.website, phone: company.phone, email: company.email } } : {}) };
   let live: CandidateCompany | null = null;
-  try {
-    if (ref) live = await (dependencies.details ?? (async (id, country) => process.env.GOOGLE_PLACES_API_KEY?.trim() ? new GooglePlacesAdapter(process.env.GOOGLE_PLACES_API_KEY).details(id, country) : null))(ref.sourceRef, company.country);
-  } catch { /* Manual confirmation remains possible; no Google fallback values. */ }
-  let note = 'Sin datos de Google en vivo. Introduce sólo información propia confirmada manualmente.';
-  if (live?.website) {
-    const website = await (dependencies.crawl ?? crawlCompanyWebsite)(live.website);
+  const deadline = Date.now() + 38_000;
+  // A registered website takes priority; Google is only necessary when it is absent.
+  if (ref && !company.website) try {
+    const offlineDetails: ProposalDependencies['details'] = async () => company.fictional && ref.sourceRef === 'google-e2e-complete-web' ? {
+      name: '[SIMULADA] Google', city: 'Google city', province: '', country: company.country, address: 'Google address', website: 'https://completar.example.invalid', corporatePhone: '978999999', category: '', source: 'google-places', sourceRef: ref.sourceRef, sourceUrl: null, simulated: true,
+    } : null;
+    live = await withinBudget(signal => (dependencies.details ?? (process.env.E2E_WEBSITE_MOCK === '1' ? offlineDetails : async (id, country, abort) => process.env.GOOGLE_PLACES_API_KEY?.trim() ? new GooglePlacesAdapter(process.env.GOOGLE_PLACES_API_KEY).details(id, country, abort) : null))(ref.sourceRef, company.country, signal), 8_000);
+  } catch { /* Independent manual confirmation remains possible. */ }
+  let note = 'Sin web consultable. Introduce \u00fanicamente informaci\u00f3n propia confirmada manualmente.';
+  const locator = company.website || live?.website;
+  if (locator) try {
+    const website = await withinBudget(signal => (dependencies.crawl ?? crawlCompanyWebsite)(locator, undefined, { signal, budgetMs: Math.min(30_000, deadline - Date.now()) }), deadline - Date.now());
     note = website.note;
     for (const page of website.business ?? []) for (const field of ['name', 'city', 'phone', 'email'] as const) {
       const value = page[field]; if (value && !proposal.fields[field]) proposal.fields[field] = { value, url: page.url, date: page.date };
     }
     if (website.sources[0]) proposal.fields.website = { value: website.sources[0].url, url: website.sources[0].url, date: website.sources[0].date };
-  } else if (live) note = 'Google no indica una web. Introduce únicamente datos propios confirmados manualmente.';
+  } catch { note = 'Se agot\u00f3 el tiempo de consulta. Puedes introducir datos propios manualmente o volver a intentarlo.'; }
   return { live, proposal, note };
+}
+
+export function prepareAcceptance(db: PrismaClient, companyId: string, dependencies: ProposalDependencies = {}) {
+  return prepareWebsiteProposal(db, companyId, 'accept', dependencies);
 }
 
 export async function acceptCompany(db: PrismaClient, companyId: string, raw: unknown, userId: string, proposal?: AcceptanceProposal) {
