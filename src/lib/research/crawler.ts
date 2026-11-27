@@ -91,7 +91,15 @@ export function isCanonicalRedirect(from: URL, to: URL) {
     !to.port && base(from) === base(to) && !(from.protocol === 'https:' && to.protocol === 'http:');
 }
 
+/** Mudanza de dominio aceptada: destino https, portada, sin credenciales ni puertos, y otro nombre de host. */
+export function isDomainMove(from: URL, to: URL) {
+  const base = (url: URL) => url.hostname.toLowerCase().replace(/^www\./, '');
+  return from.pathname === '/' && to.protocol === 'https:' && !to.username && !to.password && !to.port &&
+    (to.pathname === '/' || to.pathname === '') && !to.search && base(from) !== base(to) && to.hostname.includes('.');
+}
+
 class RobotsDenied extends Error {}
+class RobotsMoved extends Error {}
 
 export async function crawlCompanyWebsite(website: string | null, request = requestPage, options: { signal?: AbortSignal; budgetMs?: number } = {}): Promise<{ sources: Evidence[]; note: string; business?: SiteBusiness[] }> {
   if (!website) return { sources: [], note: 'Sin web: ficha basada únicamente en los datos registrados en el CRM.' };
@@ -115,7 +123,7 @@ export async function crawlCompanyWebsite(website: string | null, request = requ
         const response = await boundedRequest(url, url.origin);
         if (response.location && response.status >= 300 && response.status < 400) {
           const next = new URL(response.location, url);
-          if (!isCanonicalRedirect(url, next) || next.pathname !== '/robots.txt') throw new Error('Redirección de robots no permitida');
+          if (!isCanonicalRedirect(url, next) || next.pathname !== '/robots.txt') throw new RobotsMoved('Redirección de robots no permitida');
           url = next; continue;
         }
         if (response.status !== 200 && response.status !== 404) throw new Error('robots.txt no disponible');
@@ -124,6 +132,23 @@ export async function crawlCompanyWebsite(website: string | null, request = requ
         return rules;
       }
       throw new Error('Demasiadas redirecciones de robots');
+    }
+    async function resolveMovedHome(initial: URL) {
+      let url = initial;
+      for (let hops = 0; hops < 4; hops++) {
+        try { await loadRobots(url.origin); return url; } catch (error) {
+          // Solo una redirección de robots.txt fuera del dominio indica mudanza; tiempo agotado u otros errores se propagan.
+          if (!(error instanceof RobotsMoved)) throw error;
+        }
+        // robots.txt no se puede leer en este origen: solo se comprueba si la portada redirige a otro dominio.
+        const response = await boundedRequest(url, url.origin);
+        if (!response.location || response.status < 300 || response.status >= 400) return url;
+        const next = new URL(response.location, url);
+        if (isCanonicalRedirect(url, next)) { url = next; continue; }
+        if (isDomainMove(url, next)) return new URL('/', next.origin);
+        return url;
+      }
+      return url;
     }
     async function fetchAllowedPage(initial: URL) {
       let url = initial;
@@ -140,6 +165,9 @@ export async function crawlCompanyWebsite(website: string | null, request = requ
       }
       throw new Error('Demasiadas redirecciones');
     }
+    // Webs que se han mudado de dominio (p. ej. http://www.construccioneslecha.com → https://lecha.es):
+    // se sigue UNA mudanza, solo desde la portada, hacia la portada https del nuevo dominio; allí se vuelve a respetar robots.txt.
+    home = await resolveMovedHome(home);
     const result = await fetchAllowedPage(home);
     if (result.status !== 200) throw new Error('Home no disponible');
     home = result.url;
