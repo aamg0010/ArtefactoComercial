@@ -27,6 +27,9 @@ export const e2eEnvironment = {
   GOOGLE_PLACES_API_KEY: '',
   // Las pruebas E2E usan la simulación de Google, que en producción está desactivada.
   PROSPECTING_ALLOW_MOCK: '1',
+  E2E_WEBSITE_MOCK: '1',
+  NEXT_TELEMETRY_DISABLED: '1',
+  NEXT_FONT_GOOGLE_MOCKED_RESPONSES: `${process.cwd()}/e2e/font-responses.cjs`,
   // Local trygestión test double started by e2e/fase5.spec.ts (never the real service).
   TRYGESTION_URL: 'http://127.0.0.1:3199/api',
   TRYGESTION_TOKEN: 'trygestion-local-test-token',

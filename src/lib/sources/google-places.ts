@@ -101,8 +101,8 @@ export class GooglePlacesAdapter implements SourceAdapter {
     return parsed.data.displayName.text;
   }
 
-  async details(placeId: string, country: 'ES' | 'CO') {
-    const parsed = placeSchema.safeParse(await this.request(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`));
+  async details(placeId: string, country: 'ES' | 'CO', signal?: AbortSignal) {
+    const parsed = placeSchema.safeParse(await this.request(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, undefined, { signal, timeoutMs: 8_000, attempts: 1 }));
     if (!parsed.success) throw new SourceError('GOOGLE_RESPONSE_INVALID');
     return this.candidate(parsed.data, { city: 'Pendiente', province: '' }, country);
   }

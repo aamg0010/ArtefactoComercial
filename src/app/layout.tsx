@@ -1,3 +1,4 @@
+import { DeploymentRecovery } from './deployment-recovery';
 import './globals.css';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -24,6 +25,7 @@ export default async function Layout({ children }: Readonly<{ children: React.Re
   const ownImportant = session?.user?.id ? (await loadGuide(prisma, { userId: session.user.id, role: session.user.role ?? 'SALES' })).important : undefined;
   return <html lang="es" className={`${display.variable} ${serif.variable}`}>
     <body>
+      <DeploymentRecovery/>
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-3">
           <Link href="/" className="flex items-center gap-3" aria-label="try! Comercial, inicio">

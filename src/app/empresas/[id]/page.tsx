@@ -1,3 +1,4 @@
+import { CompletionFocus } from './complete-web-focus';
 import { CompanyName } from '@/app/company-name';
 import { liveCompanyNames } from '@/lib/prospecting/live-names';
 import { companyJobState, isCompanyJobRunning } from '@/lib/jobs/company-jobs';
@@ -36,6 +37,7 @@ export const dynamic = 'force-dynamic';
 const factorLabels: Record<string, string> = { sector: 'Encaje de sector', size: 'Tamaño', intent: 'Intención', contact: 'Accesibilidad del contacto', proximity: 'Proximidad geográfica', crossSell: 'Venta cruzada' };
 const fieldLabels: Record<string, string> = { name: 'Nombre', city: 'Municipio', website: 'Web', phone: 'Teléfono corporativo', email: 'Email corporativo' };
 const errorMessages: Record<string, string> = {
+  'completar-web': 'No se pudieron guardar los datos. La propuesta puede haber caducado o los datos haber cambiado. Vuelve a completar desde su web y revisa el formulario.',
   CONTACT_CONFIRMATION_REQUIRED: 'Esta empresa está contactada y en espera. Revisa las fechas y marca «Sí, quiero contactarla igualmente» para continuar.',
   CONTACT_BLOCKED: 'Esta empresa está marcada como No contactar o Cliente. No se puede contactar.',
   'email-no-preparado': 'No se pudo preparar el email. Comprueba que la empresa esté aceptada, sin baja y el guion aprobado.',
@@ -46,6 +48,7 @@ const errorMessages: Record<string, string> = {
   'nif-duplicado': 'Ese NIF/NIT ya pertenece a otra empresa de la base.',
 };
 const okMessages: Record<string, string> = {
+  'datos-completados': 'Datos completados desde su web. Ahora puedes investigar la empresa para un guion m\u00e1s personalizado.',
   'contacto-anadido': 'Contacto añadido.', 'contacto-borrado': 'Contacto borrado (también se borrará en trygestión).',
   consentimiento: 'Consentimiento actualizado.', 'empresa-guardada': 'Datos de la empresa guardados.',
 };
@@ -76,6 +79,7 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
   const researchState = companyJobState('research', isCompanyJobRunning('research', company.id), latest?.createdAt, researchResult);
   const actionForm = (action: string, label: string) => <form action={companyAction}><input type="hidden" name="companyId" value={company.id}/><SubmitButton name="action" value={action} disabled={!canEdit || company.acceptanceStatus !== 'ACCEPTED' || (action === 'research' && researchState === 'running')} {...pendingFor[action]}>{label}</SubmitButton></form>;
   return <main className="mx-auto max-w-5xl space-y-5 p-3 [overflow-wrap:anywhere] sm:p-5">
+    {searchParams.ok === 'datos-completados' && <CompletionFocus/>}
     <JobRefresh active={scriptState === 'running' || researchState === 'running'}/>
     {scriptState === 'running' && <p role="status">Generando guion con IA… suele tardar uno o dos minutos. Puedes seguir trabajando; esta página se actualiza sola.</p>}
     {researchState === 'running' && <p role="status">Investigando… suele tardar uno o dos minutos. Puedes seguir trabajando; esta página se actualiza sola.</p>}
@@ -97,8 +101,8 @@ export default async function CompanyDetail({ params, searchParams }: { params: 
     <ContactHistory companyId={company.id} medium={searchParams.medio} limit={searchParams.limite}/>
     <PlacesView companyId={company.id} country={company.country}/>
     {searchParams.error && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">{errorMessages[searchParams.error] ?? 'No se pudo completar la operación. Comprueba la configuración o vuelve a intentarlo. La ejecución de IA queda registrada sin datos personales.'}</p>}
-    {(searchParams.done || (searchParams.ok && !['generando', 'investigando'].includes(searchParams.ok))) && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-emerald-900">{okMessages[searchParams.ok ?? ''] ?? 'Operación completada.'}</p>}
-    <section aria-label="Datos de empresa" className="card p-4">
+    {(searchParams.done || (searchParams.ok && !['generando', 'investigando'].includes(searchParams.ok))) && <p id="datos-completados" role="status" className="scroll-mt-32 rounded-lg bg-emerald-50 p-3 text-emerald-900">{okMessages[searchParams.ok ?? ''] ?? 'Operación completada.'}</p>}
+    <section id="datos-empresa" aria-label="Datos de empresa" className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Datos de empresa</h2>
         {actionForm('research', 'Investigar')}

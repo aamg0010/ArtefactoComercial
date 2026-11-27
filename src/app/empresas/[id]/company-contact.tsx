@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { withoutPlaceIds } from '@/lib/prospecting/live-names';
 import type { Company, CompanySource, Contact } from '@prisma/client';
 import { isVerifiedDirectContact } from '@/lib/company-contact';
@@ -38,6 +39,8 @@ export function CompanyContact({ company, contacts, sources, editable }: { compa
         })}
       </Field>
     </dl>
+
+    {editable && company.acceptanceStatus === 'ACCEPTED' && (company.website || sources.some(source => source.source === 'google-places')) && (!company.website || !company.phone || !company.email) && <p className="mt-4"><Link className={link} href={`/empresas/${company.id}/completar`} prefetch={false}>Completar datos desde su web</Link></p>}
 
     {editable && <details className="mt-4 rounded-xl border border-slate-200 p-3">
       <summary className="cursor-pointer font-display font-semibold text-try-900">✏️ Editar datos de la empresa</summary>
