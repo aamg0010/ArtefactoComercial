@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import templates from '../../../data/guiones.json';
 import { companyScriptContext, scriptPrompt, lacksWebsiteResearch } from './script-context';
 import { mockResearch } from './schema';
-import { forbiddenPhrases, generatedScriptSchema, isReusableDraft, mockScript, normalizeScriptText } from './scripts';
+import { forbiddenPhrases, generatedScriptSchema, isOrganizationName, isReusableDraft, mockScript, normalizeScriptText } from './scripts';
 import { defaultSignature, emailBodyWithoutFooter, personalizeGreeting } from '../mi-dia/script-email';
 import { productCatalog } from '../products/catalog';
 import { generateJson } from '../llm';
@@ -81,4 +81,17 @@ it('solo reutiliza borradores con el marco nuevo; los antiguos o aprobados se re
   const antiguo = base(); antiguo.emails = antiguo.emails.map(e => ({ ...e, cuerpo: e.cuerpo.replace('[NOMBRE]', 'equipo') }));
   expect(isReusableDraft({ status: 'BORRADOR', content: antiguo })).toBe(false);
   expect(isReusableDraft({ status: 'BORRADOR', content: { otro: true } })).toBe(false);
+});
+
+it('no confunde el nombre de la empresa con un nombre de persona y sigue bloqueando personas reales', () => {
+  expect(isOrganizationName('Frutos Secos Gil', 'Frutos Secos Gil')).toBe(true);
+  expect(isOrganizationName('Cooperativa Agrícola San Lorenzo0', 'Cooperativa Agrícola San Lorenzo')).toBe(true);
+  expect(isOrganizationName('Bodegas Ejemplo S.L.', 'Otra')).toBe(true);
+  expect(isOrganizationName('Marta López', 'Frutos Secos Gil')).toBe(false);
+  const gil = generatedScriptSchema(sources, 'Athenea', cadence, ['Frutos Secos Gil', 'Athenea'], { companyName: 'Frutos Secos Gil', personNames: ['Frutos Secos Gil', 'Juan Gil'] });
+  const issues = (s: unknown) => { const r = gil.safeParse(s); return r.success ? '' : r.error.issues.map(i => i.message).join(' '); };
+  const script = base(); script.emails[1].cuerpo += ' En Frutos Secos Gil lo verán claro.';
+  expect(issues(script)).not.toContain('nombres de personas');
+  script.emails[1].cuerpo += ' Juan Gil me lo comentó.';
+  expect(issues(script)).toContain('No escribas nombres de personas: Juan Gil');
 });
